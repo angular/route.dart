@@ -1,6 +1,6 @@
 library url_matcher;
 
-import 'package:unittest/matcher.dart';
+import 'src/utils.dart';
 
 /**
  * A reversible URL matcher interface.
@@ -46,7 +46,7 @@ class UrlMatch {
       return false;
     }
     return o.match == match && o.tail == tail &&
-        equals(o.parameters, 1).matches(parameters, null);
+        mapsEqual(o.parameters, parameters);
   }
 
   String toString() {

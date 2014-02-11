@@ -10,6 +10,8 @@ import 'dart:html';
 
 import 'package:logging/logging.dart';
 
+import 'src/utils.dart';
+
 import 'url_matcher.dart';
 export 'url_matcher.dart';
 import 'url_template.dart';
@@ -541,20 +543,8 @@ class Router {
 
   bool _paramsChanged(Route baseRoute, UrlMatch match) {
     return baseRoute._currentRoute._lastEvent.path != match.match ||
-        !_mapsEqual(baseRoute._currentRoute._lastEvent.parameters,
+        !mapsEqual(baseRoute._currentRoute._lastEvent.parameters,
             match.parameters);
-  }
-
-  bool _mapsEqual(Map a, Map b) {
-    if (a.keys.length != b.keys.length) {
-      return false;
-    }
-    for (var keyInA in a.keys) {
-      if (!b.containsKey(keyInA) || a[keyInA] != b[keyInA]) {
-        return false;
-      }
-    }
-    return true;
   }
 
   /// Navigates to a given relative route path, and parameters.
