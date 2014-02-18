@@ -518,13 +518,18 @@ class Router {
     return _leaveCurrentRoute(startingFrom, event);
   }
 
+  List _matchingRoutes(String path, Route baseRoute) {
+    return (baseRoute._routes.values.toList()
+      ..sort((r1, r2) => r1.path.compareTo(r2.path)))
+      .where((r) => r.path.match(path) != null).toList();
+  }
+
   Iterable<_Match> _matchingTreePath(String path, Route baseRoute) {
     List<_Match> treePath = <_Match>[];
     Route matchedRoute;
     do {
       matchedRoute = null;
-      List matchingRoutes = baseRoute._routes.values.where(
-          (r) => r.path.match(path) != null).toList();
+      List matchingRoutes = _matchingRoutes(path, baseRoute);
       if (!matchingRoutes.isEmpty) {
         if (matchingRoutes.length > 1) {
           _logger.warning("More than one route matches $path $matchingRoutes");

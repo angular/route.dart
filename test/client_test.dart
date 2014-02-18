@@ -22,6 +22,166 @@ main() {
     return router.route('/foo');
   });
 
+  group('use a longer path first', () {
+
+    test('add a longer path first', () {
+      Router router = new Router();
+      router.root
+        ..addRoute(
+          name: 'foobar',
+          path: '/foo/bar',
+          enter: expectAsync((RouteEvent e) {
+            expect(e.path, '/foo/bar');
+            expect(router.root.getRoute('foobar').isActive, isTrue);
+          }))
+        ..addRoute(
+          name: 'foo',
+          path: '/foo',
+          enter: (e) => fail('should invoke /foo/bar'));
+      return router.route('/foo/bar');
+    });
+
+    test('add a longer path last', () {
+      Router router = new Router();
+      router.root
+        ..addRoute(
+          name: 'foo',
+          path: '/foo',
+          enter: (e) => fail('should invoke /foo/bar'))
+        ..addRoute(
+          name: 'foobar',
+          path: '/foo/bar',
+          enter: expectAsync((RouteEvent e) {
+            expect(e.path, '/foo/bar');
+            expect(router.root.getRoute('foobar').isActive, isTrue);
+          }));
+      return router.route('/foo/bar');
+    });
+
+    test('add paths with a param', () {
+      Router router = new Router();
+      router.root
+        ..addRoute(
+          name: 'foo',
+          path: '/foo',
+          enter: (e) => fail('should invoke /foo/bar'))
+        ..addRoute(
+          name: 'fooparam',
+          path: '/foo/:param',
+          enter: expectAsync((RouteEvent e) {
+            expect(e.path, '/foo/bar');
+            expect(router.root.getRoute('fooparam').isActive, isTrue);
+          }));
+      return router.route('/foo/bar');
+    });
+
+    test('add paths with a parametalized parent', () {
+      Router router = new Router();
+      router.root
+        ..addRoute(
+          name: 'paramaddress',
+          path: '/:zzzzzz/address',
+          enter: expectAsync((RouteEvent e) {
+            expect(e.path, '/foo/address');
+            expect(router.root.getRoute('paramaddress').isActive, isTrue);
+          }))
+        ..addRoute(
+          name: 'param.add',
+          path: '/:aaaaaa/add',
+          enter: (e) => fail('should invoke /foo/address'));
+      return router.route('/foo/address');
+    });
+
+    test('add paths with a first param and one without', () {
+      Router router = new Router();
+      router.root
+        ..addRoute(
+          name: 'fooparam',
+          path: '/:param/foo',
+          enter: expectAsync((RouteEvent e) {
+            expect(e.path, '/bar/foo');
+            expect(router.root.getRoute('fooparam').isActive, isTrue);
+          }))
+        ..addRoute(
+          name: 'bar',
+          path: '/bar',
+          enter: (e) => fail('should enter fooparam'));
+      return router.route('/bar/foo');
+    });
+
+    test('add paths with a first param and one without 2', () {
+      Router router = new Router();
+      router.root
+        ..addRoute(
+          name: 'paramfoo',
+          path: '/:param/foo',
+          enter: (e) => fail('should enter barfoo'))
+        ..addRoute(
+          name: 'barfoo',
+          path: '/bar/foo',
+          enter: expectAsync((RouteEvent e) {
+            expect(e.path, '/bar/foo');
+            expect(router.root.getRoute('barfoo').isActive, isTrue);
+          }))
+        ;
+      return router.route('/bar/foo');
+    });
+
+    test('add paths with a second param and one without', () {
+      Router router = new Router();
+      router.root
+        ..addRoute(
+          name: 'bazparamfoo',
+          path: '/baz/:param/foo',
+          enter: (e) => fail('should enter bazbarfoo'))
+        ..addRoute(
+          name: 'bazbarfoo',
+          path: '/baz/bar/foo',
+          enter: expectAsync((RouteEvent e) {
+            expect(e.path, '/baz/bar/foo');
+            expect(router.root.getRoute('bazbarfoo').isActive, isTrue);
+          }))
+        ;
+      return router.route('/baz/bar/foo');
+    });
+
+    test('add paths with a first param and a second param', () {
+      Router router = new Router();
+      router.root
+        ..addRoute(
+          name: 'parambarfoo',
+          path: '/:param/bar/foo',
+          enter: (e) => fail('should enter bazparamfoo'))
+        ..addRoute(
+          name: 'bazparamfoo',
+          path: '/baz/:param/foo',
+          enter: expectAsync((RouteEvent e) {
+            expect(e.path, '/baz/bar/foo');
+            expect(router.root.getRoute('bazparamfoo').isActive, isTrue);
+          }))
+        ;
+      return router.route('/baz/bar/foo');
+    });
+
+    test('add paths with two params and a param', () {
+      Router router = new Router();
+      router.root
+        ..addRoute(
+          name: 'param1param2foo',
+          path: '/:param1/:param2/foo',
+          enter: (e) => fail('should enter bazparamfoo'))
+        ..addRoute(
+          name: 'param1barfoo',
+          path: '/:param1/bar/foo',
+          enter: expectAsync((RouteEvent e) {
+            expect(e.path, '/baz/bar/foo');
+            expect(router.root.getRoute('param1barfoo').isActive, isTrue);
+          }))
+        ;
+      return router.route('/baz/bar/foo');
+    });
+  });
+
   group('hierarchical routing', () {
 
     _testParentChild(
