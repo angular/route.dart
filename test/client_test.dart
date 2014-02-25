@@ -1,3 +1,9 @@
+// Copyright (c) 2013, the Dart project authors.  Please see the AUTHORS file
+// for details. All rights reserved. Use of this source code is governed by a
+// BSD-style license that can be found in the LICENSE file.
+
+library route.client_test;
+
 import 'dart:async';
 
 import 'package:unittest/unittest.dart';
@@ -5,7 +11,7 @@ import 'package:unittest/mock.dart';
 import 'package:route_hierarchical/client.dart';
 import 'package:route_hierarchical/url_pattern.dart';
 
-import 'mocks.dart';
+import 'util/mocks.dart';
 
 main() {
   unittestConfiguration.timeout = new Duration(seconds: 1);
