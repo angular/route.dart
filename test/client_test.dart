@@ -5,6 +5,7 @@
 library route.client_test;
 
 import 'dart:async';
+import 'dart:html';
 
 import 'package:unittest/unittest.dart';
 import 'package:unittest/mock.dart';
@@ -491,6 +492,30 @@ main() {
 
   });
 
+  group('click behavior', () {
+
+    test('', () {
+      var mockWindow = new MockWindow();
+      var router = new Router(windowImpl: mockWindow);
+      var mockAnchor = new MockAnchorElement();
+
+      mockWindow.location.host = "www.test.com";
+      mockAnchor.host = "www.test.com";
+
+      router.root.addRoute(name: 'click', path: '/click');
+
+      router.listen(appRoot: mockAnchor);
+
+      mockAnchor.triggerClick();
+
+
+
+
+    });
+
+  });
+
+
   group('go', () {
 
     test('shoud use location.assign/.replace when useFragment=true', () {
@@ -884,5 +909,5 @@ main() {
 
 }
 
-/// An alias for Router.root.getRoute(path)
+// An alias for Router.root.getRoute(path)
 r(Router router, String path) => router.root.getRoute(path);
