@@ -521,7 +521,7 @@ class Router {
 
   bool _paramsChanged(Route baseRoute, UrlMatch match) {
     return baseRoute._currentRoute._lastEvent.path != match.match ||
-        !mapsEqual(baseRoute._currentRoute._lastEvent.parameters,
+        !mapsShallowEqual(baseRoute._currentRoute._lastEvent.parameters,
             match.parameters);
   }
 
