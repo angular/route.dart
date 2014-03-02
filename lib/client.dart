@@ -486,11 +486,11 @@ class Router {
   }
 
   List _matchingRoutes(String path, Route baseRoute) {
-    var routes = baseRoute._routes.values.toList();
-    if (sortRoutes) {
-      routes.sort((r1, r2) => r1.path.compareTo(r2.path));
-    }
-    return routes.where((r) => r.path.match(path) != null).toList();
+    var routes = baseRoute._routes.values
+        .where((r) => r.path.match(path) != null)
+        .toList();
+      if (sortRoutes) routes.sort((r1, r2) => r1.path.compareTo(r2.path));
+      return routes;
   }
 
   Iterable<_Match> _matchingTreePath(String path, Route baseRoute) {
@@ -581,14 +581,14 @@ class Router {
     return params;
   }
 
-  List<String> _parseKeyVal(keyValPair) {
+  List<String> _parseKeyVal(String keyValPair) {
     if (keyValPair.isEmpty) return ['', ''];
-    var splitPoint = keyValPair.indexOf('=') == -1 ?
-        keyValPair.length : keyValPair.indexOf('=') + 1;
-    var key = keyValPair.substring(0, splitPoint +
-        (keyValPair.indexOf('=') == -1 ? 0 : -1));
-    var value = keyValPair.substring(splitPoint);
-    return [key, value];
+    var splitPoint = keyValPair.indexOf('=');
+
+    return (splitPoint == -1)
+        ? [keyValPair, '']
+        : [keyValPair.substring(0, splitPoint),
+              keyValPair.substring(splitPoint + 1)];
   }
 
   void _unsetAllCurrentRoutes(Route r) {
@@ -599,8 +599,9 @@ class Router {
   }
 
   Future<bool> _leaveCurrentRoute(Route base, RouteLeaveEvent e) =>
-      Future.wait(_leaveCurrentRouteHelper(base, e))
-          .then((values) => values.fold(true, (c, v) => c && v));
+      Future
+          .wait(_leaveCurrentRouteHelper(base, e))
+          .then((values) => values.every((v) => v == true));
 
   List<Future<bool>> _leaveCurrentRouteHelper(Route base, RouteLeaveEvent e) {
     var futures = [];
@@ -609,8 +610,9 @@ class Router {
       // We create a copy of the route event
       var event = e._clone();
       base._currentRoute._onLeaveController.add(event);
-      futures.addAll(event._allowLeaveFutures);
-      futures.addAll(_leaveCurrentRouteHelper(base._currentRoute, event));
+      futures
+          ..addAll(event._allowLeaveFutures)
+          ..addAll(_leaveCurrentRouteHelper(base._currentRoute, event));
     }
     return futures;
   }
