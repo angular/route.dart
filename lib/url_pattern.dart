@@ -210,7 +210,7 @@ class UrlPattern implements UrlMatcher, Pattern {
     return regex.allMatches(str);
   }
 
-  bool operator ==(other) =>
+  bool operator ==(UrlPattern other) =>
       (other is UrlPattern) && (other.pattern == pattern);
 
   int get hashCode => pattern.hashCode;
