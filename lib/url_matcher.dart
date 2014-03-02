@@ -5,7 +5,7 @@ import 'src/utils.dart';
 /**
  * A reversible URL matcher interface.
  */
-abstract class UrlMatcher extends Comparable {
+abstract class UrlMatcher implements Comparable<UrlMatcher> {
 
   /**
    * Attempts to match a given URL. If match is successul then returns an
@@ -25,16 +25,16 @@ abstract class UrlMatcher extends Comparable {
   List<String> urlParameterNames();
 
   /**
-   * Return a value which is:
+   * Returns a value which is:
    * * negative if this matcher should be tested before another.
    * * zero if this matcher and another can be tested in no particular order.
    * * positive if this matcher should be tested after another.
    */
-  int compareTo(UrlMatcher other) => 0;
+  int compareTo(UrlMatcher other);
 }
 
 /**
- * Object representing a successul URL match.
+ * Object representing a successful URL match.
  */
 class UrlMatch {
 
@@ -54,8 +54,8 @@ class UrlMatch {
       other.match == match &&
       other.tail == tail &&
       mapsShallowEqual(other.parameters, parameters);
-  bool operator ==(o) {
 
-  String toString() {
-    return '{$match, $tail, $parameters}';
+  int get hashCode => (match + '&&' + tail).hashCode + parameters.hashCode;
+
+  String toString() =>'UrlMatch {$match, $tail, $parameters}';
 }

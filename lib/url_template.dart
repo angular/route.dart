@@ -14,7 +14,7 @@ class UrlTemplate implements UrlMatcher {
   RegExp _pattern;
   List _chunks;
 
-  String toString() => '$_pattern';
+  String toString() => 'UrlTemplate($_pattern)';
 
   int compareTo(UrlMatcher other) {
     final String tmpParamPattern = '\t';

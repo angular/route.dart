@@ -215,7 +215,7 @@ class UrlPattern implements UrlMatcher, Pattern {
 
   int get hashCode => pattern.hashCode;
 
-  String toString() => pattern.toString();
+  String toString() => 'UrlPattern(${pattern.toString()})';
 
   _parse(String pattern) {
     var sb = new StringBuffer();
