@@ -17,8 +17,7 @@ class _MultiPattern extends Pattern {
   final Iterable<Pattern> include;
   final Iterable<Pattern> exclude;
 
-  _MultiPattern(Iterable<Pattern> this.include,
-      {Iterable<Pattern> this.exclude});
+  _MultiPattern(this.include, {this.exclude: null});
 
   Iterable<Match> allMatches(String str) {
     var _allMatches = [];
@@ -27,15 +26,13 @@ class _MultiPattern extends Pattern {
       if (_hasMatch(matches)) {
         if (exclude != null) {
           for (var excludePattern in exclude) {
-            if (_hasMatch(excludePattern.allMatches(str))) {
-              return [];
-            }
+            if (_hasMatch(excludePattern.allMatches(str))) return [];
           }
         }
-        _allMatches.add(matches);
+        _allMatches.addAll(matches);
       }
     }
-    return _allMatches.expand((x) => x);
+    return _allMatches;
   }
 
   Match matchAsPrefix(String string, [int start = 0]) {
@@ -48,7 +45,7 @@ class _MultiPattern extends Pattern {
  * returns all the matches. If the input string matches against any pattern in
  * [exclude] no matches are returned.
  */
-Pattern matchAny(Iterable<Pattern> include, {Iterable<Pattern> exclude}) =>
+Pattern matchAny(Iterable<Pattern> include, {Iterable<Pattern> exclude: null}) =>
     new _MultiPattern(include, exclude: exclude);
 
 /**
@@ -64,18 +61,13 @@ bool matchesFull(Pattern pattern, String str) {
   return false;
 }
 
-bool matchesPrefix(Pattern pattern, String str) {
-  Iterable<Match> matches = pattern.allMatches(str);
-  return !matches.isEmpty && matches.first.start == 0;
-}
+bool matchesPrefix(Pattern pattern, String str) =>
+    prefixMatch(pattern, str) != null;
 
 /// return the tail
 Match prefixMatch(Pattern pattern, String str) {
   Iterable<Match> matches = pattern.allMatches(str);
-  if (!matches.isEmpty && matches.first.start == 0) {
-    return matches.first;
-  }
-  return null;
+  return (!matches.isEmpty && matches.first.start == 0) ? matches.first : null;
 }
 
 bool _hasMatch(Iterable<Match> matches) => matches.iterator.moveNext();

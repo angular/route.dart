@@ -499,7 +499,7 @@ class Router {
     do {
       matchedRoute = null;
       List matchingRoutes = _matchingRoutes(path, baseRoute);
-      if (!matchingRoutes.isEmpty) {
+      if (matchingRoutes.isNotEmpty) {
         if (matchingRoutes.length > 1) {
           _logger.warning("More than one route matches $path $matchingRoutes");
         }
@@ -606,7 +606,6 @@ class Router {
   List<Future<bool>> _leaveCurrentRouteHelper(Route base, RouteLeaveEvent e) {
     var futures = [];
     if (base._currentRoute != null) {
-      List<Future<bool>> pendingResponses = <Future<bool>>[];
       // We create a copy of the route event
       var event = e._clone();
       base._currentRoute._onLeaveController.add(event);
