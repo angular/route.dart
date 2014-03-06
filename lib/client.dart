@@ -17,15 +17,15 @@ import 'url_template.dart';
 
 
 final _logger = new Logger('route');
-final _pathSeparator = '.';
+const _PATH_SEPARATOR = '.';
 
-typedef RoutePreEnterEventHandler(RoutePreEnterEvent path);
-typedef RouteEnterEventHandler(RouteEnterEvent path);
-typedef RouteLeaveEventHandler(RouteLeaveEvent path);
+typedef RoutePreEnterEventHandler(RoutePreEnterEvent event);
+typedef RouteEnterEventHandler(RouteEnterEvent event);
+typedef RouteLeaveEventHandler(RouteLeaveEvent event);
 
 /**
  * A helper Router handle that scopes all route event subsriptions to it's
- * instance and provides an convinience [discard] method.
+ * instance and provides an convenience [discard] method.
  */
 class RouteHandle implements Route {
   Route _route;
@@ -74,12 +74,13 @@ class RouteHandle implements Route {
   /// Not supported. Overridden to throw an error.
   void addRoute({String name, Pattern path, bool defaultRoute: false,
     RouteEnterEventHandler enter, RoutePreEnterEventHandler preEnter,
-    RouteLeaveEventHandler leave, mount}) =>
+    RouteLeaveEventHandler leave, mount, dontLeaveOnParamChanges: false}) =>
           throw new UnsupportedError('addRoute is not supported in handle');
 
   /// See [Route.getRoute]
   Route getRoute(String routePath) {
-    Route r = _assertState(() => _getHost(_route).getRoute(routePath));
+    Route r = _assertState(() =>
+        RouteHandle._getHost(_route).getRoute(routePath));
     if (r == null) return null;
     var handle = r.newHandle();
     if (handle != null) _childHandles.add(handle);
@@ -91,20 +92,19 @@ class RouteHandle implements Route {
    */
   RouteHandle newHandle() {
     _logger.finest('newHandle for $this');
-    return new RouteHandle._new(_getHost(_route));
+    return new RouteHandle._new(RouteHandle._getHost(_route));
   }
 
-  Route _getHost(Route r) {
-    _assertState();
+  static Route _getHost(Route r) {
     if (r == null) throw new StateError('Oops?!');
     if ((r is Route) && (r is! RouteHandle)) return r;
     RouteHandle rh = r;
-    return rh._getHost(rh._route);
+    return RouteHandle._getHost(rh._route);
   }
 
   /// See [Route.reverse]
   String reverse(String tail) =>
-      _assertState(() => _getHost(_route).reverse(tail));
+      _assertState(() => RouteHandle._getHost(_route).reverse(tail));
 
   dynamic _assertState([f()]) {
     if (_route == null) {
@@ -120,7 +120,7 @@ class RouteHandle implements Route {
   Map get parameters => _route.parameters;
 
   /// See [Route.path]
-  UrlMatcher get path => _route.path;
+  UrlMatcher get path => _route.matcher;
 
   /// See [Route.name]
   String get name => _route.name;
@@ -135,8 +135,8 @@ class RouteHandle implements Route {
  */
 class Route {
   final String name;
-  final _routes = <String, Route>{};
-  final UrlMatcher path;
+  final _childRoutes = <String, Route>{};
+  final UrlMatcher matcher;
   final StreamController<RouteEnterEvent> _onEnterController;
   final StreamController<RoutePreEnterEvent> _onPreEnterController;
   final StreamController<RouteLeaveEvent> _onLeaveController;
@@ -144,6 +144,7 @@ class Route {
   Route _defaultRoute;
   Route _currentRoute;
   RouteEvent _lastEvent;
+  final bool dontLeaveOnParamChanges;
 
   @deprecated
   Stream<RouteEvent> get onRoute => onEnter;
@@ -152,7 +153,8 @@ class Route {
   Stream<RouteEvent> get onLeave => _onLeaveController.stream;
   Stream<RouteEvent> get onEnter => _onEnterController.stream;
 
-  Route._new({this.name, this.path, this.parent})
+  Route._new({this.name, this.matcher, this.parent,
+      this.dontLeaveOnParamChanges: false})
       : _onEnterController =
             new StreamController<RouteEnterEvent>.broadcast(sync: true),
         _onPreEnterController =
@@ -160,26 +162,27 @@ class Route {
         _onLeaveController =
             new StreamController<RouteLeaveEvent>.broadcast(sync: true);
 
-  void addRoute({String name, Pattern path, bool defaultRoute: false,
+  void addRoute({String name, path, bool defaultRoute: false,
       RouteEnterEventHandler enter, RoutePreEnterEventHandler preEnter,
-      RouteLeaveEventHandler leave, mount}) {
+      RouteLeaveEventHandler leave, mount, dontLeaveOnParamChanges: false}) {
     if (name == null) {
       throw new ArgumentError('name is required for all routes');
     }
-    if (name.contains(_pathSeparator)) {
+    if (name.contains(_PATH_SEPARATOR)) {
       throw new ArgumentError('name cannot contain dot.');
     }
-    if (_routes.containsKey(name)) {
+    if (_childRoutes.containsKey(name)) {
       throw new ArgumentError('Route $name already exists');
     }
 
     var matcher = path is UrlMatcher ? path : new UrlTemplate(path.toString());
 
-    var route = new Route._new(name: name, path: matcher, parent: this);
+    var route = new Route._new(name: name, matcher: matcher, parent: this,
+        dontLeaveOnParamChanges: dontLeaveOnParamChanges);
 
-    route.onPreEnter.listen(preEnter);
-    route.onEnter.listen(enter);
-    route.onLeave.listen(leave);
+    route..onPreEnter.listen(preEnter)
+         ..onEnter.listen(enter)
+         ..onLeave.listen(leave);
 
     if (mount != null) {
       if (mount is Function) {
@@ -195,7 +198,7 @@ class Route {
       }
       _defaultRoute = route;
     }
-    _routes[name] = route;
+    _childRoutes[name] = route;
   }
 
   /**
@@ -203,12 +206,12 @@ class Route {
    * dot delimited string of route names.
    */
   Route getRoute(String routePath) {
-    var routeName = routePath.split(_pathSeparator).first;
-    if (!_routes.containsKey(routeName)) {
-      _logger.warning('Invalid route name: $routeName $_routes');
+    var routeName = routePath.split(_PATH_SEPARATOR).first;
+    if (!_childRoutes.containsKey(routeName)) {
+      _logger.warning('Invalid route name: $routeName $_childRoutes');
       return null;
     }
-    var routeToGo = _routes[routeName];
+    var routeToGo = _childRoutes[routeName];
     var childPath = routePath.substring(routeName.length);
     return childPath.isEmpty ? routeToGo :
         routeToGo.getRoute(childPath.substring(1));
@@ -226,18 +229,18 @@ class Route {
 
   String _getTailUrl(String routePath, Map parameters, Map queryParams) {
     var routeName = routePath.split('.').first;
-    if (!_routes.containsKey(routeName)) {
+    if (!_childRoutes.containsKey(routeName)) {
       throw new StateError('Invalid route name: $routeName');
     }
-    var routeToGo = _routes[routeName];
+    var routeToGo = _childRoutes[routeName];
     var tail = '';
     var childPath = routePath.substring(routeName.length);
-    if (childPath.length > 0) {
+    if (childPath.isNotEmpty) {
       tail = routeToGo._getTailUrl(
           childPath.substring(1), parameters, queryParams);
     }
     _populateQueryParams(parameters, routeToGo, queryParams);
-    return routeToGo.path.reverse(
+    return routeToGo.matcher.reverse(
         parameters: _joinParams(parameters, routeToGo._lastEvent), tail: tail);
   }
 
@@ -245,7 +248,7 @@ class Route {
     parameters.keys.forEach((String prefixedKey) {
       if (prefixedKey.startsWith('${route.name}.')) {
         var key = prefixedKey.substring('${route.name}.'.length);
-        if (!route.path.urlParameterNames().contains(key)) {
+        if (!route.matcher.urlParameterNames().contains(key)) {
           queryParams[prefixedKey] = parameters[prefixedKey];
         }
       }
@@ -264,7 +267,7 @@ class Route {
    * right place.
    */
   String reverse(String tail) =>
-      path.reverse(parameters: _lastEvent.parameters, tail: tail);
+      matcher.reverse(parameters: _lastEvent.parameters, tail: tail);
 
   /**
    * Create an return a new [RouteHandle] for this route.
@@ -283,7 +286,7 @@ class Route {
 
   /**
    * Returns parameters for the currently active route. If the route is not
-   * active the getter returns null.
+   * active the getter returns [:null:].
    */
   Map get parameters {
     if (isActive) {
@@ -295,7 +298,7 @@ class Route {
 }
 
 /**
- * Route enter or leave event.
+ * Interface for route enter and leave events.
  */
 abstract class RouteEvent {
   final String path;
@@ -315,7 +318,8 @@ class RoutePreEnterEvent extends RouteEvent {
 
   /**
    * Can be called on enter with the future which will complete with a boolean
-   * value allowing (true) or disallowing (false) the current navigation.
+   * value allowing ([:true:]) or disallowing ([:false:]) the current
+   * navigation.
    */
   void allowEnter(Future<bool> allow) {
     _allowEnterFutures.add(allow);
@@ -337,7 +341,8 @@ class RouteLeaveEvent extends RouteEvent {
 
   /**
    * Can be called on enter with the future which will complete with a boolean
-   * value allowing (true) or disallowing (false) the current navigation.
+   * value allowing ([:true:]) or disallowing ([:false:]) the current
+   * navigation.
    */
   void allowLeave(Future<bool> allow) {
     _allowLeaveFutures.add(allow);
@@ -385,7 +390,7 @@ class Router {
   /**
    * [useFragment] determines whether this Router uses pure paths with
    * [History.pushState] or paths + fragments and [Location.assign]. The default
-   * value is null which then determines the behavior based on
+   * value is [:null:] which then determines the behavior based on
    * [History.supportsState].
    */
   Router({bool useFragment, Window windowImpl, bool sortRoutes: true})
@@ -399,7 +404,7 @@ class Router {
             ? !History.supportsState
             : useFragment,
         _window = (windowImpl == null) ? window : windowImpl,
-        root = new Route._new();
+        root = new Route._new(name: 'root');
 
   /**
    * A stream of route calls.
@@ -435,9 +440,7 @@ class Router {
         tail = matchedRoute.urlMatch.tail;
       }
       return skip;
-    });
-    // TODO(pavelgj): weird things happen without this line...
-    treePath = treePath.toList();
+    }).toList();
 
     if (treePath.isEmpty) return new Future.value(true);
 
@@ -450,7 +453,7 @@ class Router {
     });
   }
 
-  List<Future<bool>> _preEnter(String tail, Iterable<_Match> treePath) {
+  List<Future<bool>> _preEnter(String tail, List<_Match> treePath) {
     var preEnterFutures = <Future<bool>>[];
     treePath.forEach((_Match matchedRoute) {
       var preEnterEvent = new RoutePreEnterEvent._fromMatch(matchedRoute);
@@ -460,7 +463,7 @@ class Router {
     return preEnterFutures;
   }
 
-  Future<bool> _processNewRoute(Route startingFrom, Iterable<_Match> treePath,
+  Future<bool> _processNewRoute(Route startingFrom, List<_Match> treePath,
       String path) {
     return _leaveOldRoutes(startingFrom, treePath).then((bool allowed) {
       if (allowed) {
@@ -479,18 +482,25 @@ class Router {
     });
   }
 
-  Future<bool> _leaveOldRoutes(Route startingFrom, Iterable<_Match> treePath) {
+  Future<bool> _leaveOldRoutes(Route startingFrom, List<_Match> treePath) {
     if (treePath.isEmpty) return new Future.value(true);
+
+    var currentRoute = startingFrom._currentRoute;
+    if (currentRoute != null &&
+        currentRoute.dontLeaveOnParamChanges &&
+        identical(currentRoute, treePath.last.route)) {
+      return new Future.value(true);
+    }
     var event = new RouteLeaveEvent('', {}, startingFrom);
     return _leaveCurrentRoute(startingFrom, event);
   }
 
   List _matchingRoutes(String path, Route baseRoute) {
-    var routes = baseRoute._routes.values.toList();
+    var routes = baseRoute._childRoutes.values.toList();
     if (sortRoutes) {
-      routes.sort((r1, r2) => r1.path.compareTo(r2.path));
+      routes.sort((r1, r2) => r1.matcher.compareTo(r2.matcher));
     }
-    return routes.where((r) => r.path.match(path) != null).toList();
+    return routes.where((r) => r.matcher.match(path) != null).toList();
   }
 
   Iterable<_Match> _matchingTreePath(String path, Route baseRoute) {
@@ -499,7 +509,7 @@ class Router {
     do {
       matchedRoute = null;
       List matchingRoutes = _matchingRoutes(path, baseRoute);
-      if (!matchingRoutes.isEmpty) {
+      if (matchingRoutes.isNotEmpty) {
         if (matchingRoutes.length > 1) {
           _logger.warning("More than one route matches $path $matchingRoutes");
         }
@@ -520,9 +530,9 @@ class Router {
   }
 
   bool _paramsChanged(Route baseRoute, UrlMatch match) {
-    return baseRoute._currentRoute._lastEvent.path != match.match ||
-        !mapsShallowEqual(baseRoute._currentRoute._lastEvent.parameters,
-            match.parameters);
+    var lastEvent = baseRoute._currentRoute._lastEvent;
+    return lastEvent.path != match.match ||
+           !mapsShallowEqual(lastEvent.parameters, match.parameters);
   }
 
   /// Navigates to a given relative route path, and parameters.
@@ -560,7 +570,7 @@ class Router {
   Route _dehandle(Route r) => r is RouteHandle ? r._getHost(r): r;
 
   UrlMatch _getMatch(Route route, String path) {
-    var match = route.path.match(path);
+    var match = route.matcher.match(path);
     // default route
     if (match == null) return new UrlMatch('', '', {});
     match.parameters.addAll(_parseQuery(route, path));
@@ -599,7 +609,8 @@ class Router {
   }
 
   Future<bool> _leaveCurrentRoute(Route base, RouteLeaveEvent e) =>
-      Future.wait(_leaveCurrentRouteHelper(base, e))
+      Future
+          .wait(_leaveCurrentRouteHelper(base, e))
           .then((values) => values.fold(true, (c, v) => c && v));
 
   List<Future<bool>> _leaveCurrentRouteHelper(Route base, RouteLeaveEvent e) {
@@ -609,8 +620,9 @@ class Router {
       // We create a copy of the route event
       var event = e._clone();
       base._currentRoute._onLeaveController.add(event);
-      futures.addAll(event._allowLeaveFutures);
-      futures.addAll(_leaveCurrentRouteHelper(base._currentRoute, event));
+      futures
+          ..addAll(event._allowLeaveFutures)
+          ..addAll(_leaveCurrentRouteHelper(base._currentRoute, event));
     }
     return futures;
   }
@@ -700,10 +712,10 @@ class Router {
    */
   List<Route> get activePath {
     var res = <Route>[];
-    var current = root;
-    while (current._currentRoute != null) {
-      current = current._currentRoute;
-      res.add(current);
+    var route = root;
+    while (route._currentRoute != null) {
+      route = route._currentRoute;
+      res.add(route);
     }
     return res;
   }
