@@ -653,7 +653,7 @@ class Router {
               e.preventDefault();
               var path = _useFragment
                   ? _normalizeHash(anchor.hash)
-                  : '${anchor.pathname}';
+                  : anchor.pathname;
               route(path).then((allowed) {
                 if (allowed) _go(path, null, false);
               });
