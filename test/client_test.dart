@@ -372,6 +372,83 @@ main() {
     test('should veto navigation', () {
       _testAllowEnter(false);
     });
+
+    test('should allow prevent leaving on parameter changes', () {
+      var counters = <String, int>{
+          'fooPreEnter': 0,
+          'fooEnter': 0,
+          'fooLeave': 0,
+          'barPreEnter': 0,
+          'barEnter': 0,
+          'barLeave': 0
+      };
+      var router = new Router();
+      router.root
+        ..addRoute(path: r'/foo/:param',
+            name: 'foo',
+            preEnter: (_) => counters['fooPreEnter']++,
+            enter: (_) => counters['fooEnter']++,
+            leave: (_) => counters['fooLeave']++,
+            dontLeaveOnParamChanges: true)
+        ..addRoute(path: '/bar',
+              name: 'bar',
+              preEnter: (_) => counters['barPreEnter']++,
+              enter: (_) => counters['barEnter']++,
+              leave: (_) => counters['barLeave']++);
+
+      expect(counters, {
+          'fooPreEnter': 0,
+          'fooEnter': 0,
+          'fooLeave': 0,
+          'barPreEnter': 0,
+          'barEnter': 0,
+          'barLeave': 0
+      });
+
+      router.route('/foo/bar').then(expectAsync((_) {
+        expect(counters, {
+            'fooPreEnter': 1,
+            'fooEnter': 1,
+            'fooLeave': 0,
+            'barPreEnter': 0,
+            'barEnter': 0,
+            'barLeave': 0
+        });
+
+        router.route('/foo/bar').then(expectAsync((_) {
+          expect(counters, {
+              'fooPreEnter': 1,
+              'fooEnter': 1,
+              'fooLeave': 0,
+              'barPreEnter': 0,
+              'barEnter': 0,
+              'barLeave': 0
+          });
+
+          router.route('/foo/baz').then(expectAsync((_) {
+            expect(counters, {
+                'fooPreEnter': 2,
+                'fooEnter': 2,
+                'fooLeave': 0,
+                'barPreEnter': 0,
+                'barEnter': 0,
+                'barLeave': 0
+            });
+
+            router.route('/bar').then(expectAsync((_) {
+              expect(counters, {
+                  'fooPreEnter': 2,
+                  'fooEnter': 2,
+                  'fooLeave': 1,
+                  'barPreEnter': 1,
+                  'barEnter': 1,
+                  'barLeave': 0
+              });
+            }));
+          }));
+        }));
+      }));
+    });
   });
 
   group('Default route', () {

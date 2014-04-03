@@ -57,6 +57,11 @@ abstract class Route {
   Map get parameters;
 
   /**
+   * Whether to trigger the leave event when only the parameters change.
+   */
+  final bool dontLeaveOnParamChanges;
+
+  /**
    * Returns a stream of [RouteEnterEvent] events. The [RouteEnterEvent] event
    * is fired when route has already been made active, but before subroutes
    * are entered. The event starts at the root and propagates from parent to
@@ -102,7 +107,7 @@ abstract class Route {
 
   void addRoute({String name, Pattern path, bool defaultRoute: false,
         RouteEnterEventHandler enter, RoutePreEnterEventHandler preEnter,
-        RouteLeaveEventHandler leave, mount});
+        RouteLeaveEventHandler leave, mount, dontLeaveOnParamChanges: false});
 
   /**
    * Queries sub-routes using the [routePath] and returns the matching [Route].
@@ -154,6 +159,8 @@ class RouteImpl implements Route {
   RouteImpl _defaultRoute;
   RouteImpl _currentRoute;
   RouteEvent _lastEvent;
+  @override
+  final bool dontLeaveOnParamChanges;
 
   @override
   @Deprecated("use [onEnter] instead.")
@@ -165,7 +172,8 @@ class RouteImpl implements Route {
   @override
   Stream<RouteEvent> get onEnter => _onEnterController.stream;
 
-  RouteImpl._new({this.name, this.path, this.parent})
+  RouteImpl._new({this.name, this.path, this.parent,
+                 this.dontLeaveOnParamChanges: false})
       : _onEnterController =
             new StreamController<RouteEnterEvent>.broadcast(sync: true),
         _onPreEnterController =
@@ -176,7 +184,7 @@ class RouteImpl implements Route {
   @override
   void addRoute({String name, Pattern path, bool defaultRoute: false,
       RouteEnterEventHandler enter, RoutePreEnterEventHandler preEnter,
-      RouteLeaveEventHandler leave, mount}) {
+      RouteLeaveEventHandler leave, mount, dontLeaveOnParamChanges: false}) {
     if (name == null) {
       throw new ArgumentError('name is required for all routes');
     }
@@ -189,7 +197,8 @@ class RouteImpl implements Route {
 
     var matcher = path is UrlMatcher ? path : new UrlTemplate(path.toString());
 
-    var route = new RouteImpl._new(name: name, path: matcher, parent: this);
+    var route = new RouteImpl._new(name: name, path: matcher, parent: this,
+        dontLeaveOnParamChanges: dontLeaveOnParamChanges);
 
     route..onPreEnter.listen(preEnter)
          ..onEnter.listen(enter)
@@ -495,6 +504,14 @@ class Router {
 
   Future<bool> _leaveOldRoutes(Route startingFrom, List<_Match> treePath) {
     if (treePath.isEmpty) return new Future.value(true);
+
+    var currentRoute = startingFrom._currentRoute;
+    if (currentRoute != null &&
+        currentRoute.dontLeaveOnParamChanges &&
+        identical(currentRoute, treePath.last.route)) {
+      return new Future.value(true);
+    }
+
     var event = new RouteLeaveEvent('', {}, startingFrom);
     return _leaveCurrentRoute(startingFrom, event);
   }
