@@ -19,11 +19,11 @@ part 'route_handle.dart';
 
 
 final _logger = new Logger('route');
-final _pathSeparator = '.';
+const _PATH_SEPARATOR = '.';
 
-typedef RoutePreEnterEventHandler(RoutePreEnterEvent path);
-typedef RouteEnterEventHandler(RouteEnterEvent path);
-typedef RouteLeaveEventHandler(RouteLeaveEvent path);
+typedef void RoutePreEnterEventHandler(RoutePreEnterEvent event);
+typedef void RouteEnterEventHandler(RouteEnterEvent event);
+typedef void RouteLeaveEventHandler(RouteLeaveEvent event);
 
 /**
  * [Route] represents a node in the route tree.
@@ -61,10 +61,8 @@ abstract class Route {
    * is fired when route has already been made active, but before subroutes
    * are entered. The event starts at the root and propagates from parent to
    * child routes.
-   *
-   * Deprecated: use [onEnter] instead.
    */
-  @deprecated
+  @Deprecated("use [onEnter] instead.")
   Stream<RouteEnterEvent> get onRoute;
 
   /**
@@ -113,11 +111,9 @@ abstract class Route {
    * means that current route should contain route named 'foo', the 'foo' route
    * should contain route named 'bar', and so on.
    *
-   * If no match is found then null is returned.
-   *
-   * Deprecated: use [findRoute] instead.
+   * If no match is found then [:null:] is returned.
    */
-  @deprecated
+  @Deprecated("use [findRoute] instead.")
   Route getRoute(String routePath);
 
   /**
@@ -127,7 +123,7 @@ abstract class Route {
    * means that current route should contain route named 'foo', the 'foo' route
    * should contain route named 'bar', and so on.
    *
-   * If no match is found then null is returned.
+   * If no match is found then [:null:] is returned.
    */
   Route findRoute(String routePath);
 
@@ -160,7 +156,7 @@ class RouteImpl implements Route {
   RouteEvent _lastEvent;
 
   @override
-  @deprecated
+  @Deprecated("use [onEnter] instead.")
   Stream<RouteEvent> get onRoute => onEnter;
   @override
   Stream<RouteEvent> get onPreEnter => _onPreEnterController.stream;
@@ -184,7 +180,7 @@ class RouteImpl implements Route {
     if (name == null) {
       throw new ArgumentError('name is required for all routes');
     }
-    if (name.contains(_pathSeparator)) {
+    if (name.contains(_PATH_SEPARATOR)) {
       throw new ArgumentError('name cannot contain dot.');
     }
     if (_routes.containsKey(name)) {
@@ -195,9 +191,9 @@ class RouteImpl implements Route {
 
     var route = new RouteImpl._new(name: name, path: matcher, parent: this);
 
-    route.onPreEnter.listen(preEnter);
-    route.onEnter.listen(enter);
-    route.onLeave.listen(leave);
+    route..onPreEnter.listen(preEnter)
+         ..onEnter.listen(enter)
+         ..onLeave.listen(leave);
 
     if (mount != null) {
       if (mount is Function) {
@@ -221,7 +217,7 @@ class RouteImpl implements Route {
 
   @override
   Route findRoute(String routePath) {
-    var routeName = routePath.split(_pathSeparator).first;
+    var routeName = routePath.split(_PATH_SEPARATOR).first;
     if (!_routes.containsKey(routeName)) {
       _logger.warning('Invalid route name: $routeName $_routes');
       return null;
@@ -250,7 +246,7 @@ class RouteImpl implements Route {
     var routeToGo = _routes[routeName];
     var tail = '';
     var childPath = routePath.substring(routeName.length);
-    if (childPath.length > 0) {
+    if (childPath.isNotEmpty) {
       tail = routeToGo._getTailUrl(
           childPath.substring(1), parameters, queryParams);
     }
@@ -306,8 +302,7 @@ class RouteImpl implements Route {
   @override
   Map get parameters {
     if (isActive) {
-      if (_lastEvent == null) return {};
-      return new Map.from(_lastEvent.parameters);
+      return _lastEvent == null ? {} : new Map.from(_lastEvent.parameters);
     }
     return null;
   }
@@ -334,7 +329,8 @@ class RoutePreEnterEvent extends RouteEvent {
 
   /**
    * Can be called on enter with the future which will complete with a boolean
-   * value allowing (true) or disallowing (false) the current navigation.
+   * value allowing ([:true:]) or disallowing ([:false:]) the current
+   * navigation.
    */
   void allowEnter(Future<bool> allow) {
     _allowEnterFutures.add(allow);
@@ -356,7 +352,8 @@ class RouteLeaveEvent extends RouteEvent {
 
   /**
    * Can be called on enter with the future which will complete with a boolean
-   * value allowing (true) or disallowing (false) the current navigation.
+   * value allowing ([:true:]) or disallowing ([:false:]) the current
+   * navigation.
    */
   void allowLeave(Future<bool> allow) {
     _allowLeaveFutures.add(allow);
@@ -454,9 +451,7 @@ class Router {
         tail = matchedRoute.urlMatch.tail;
       }
       return skip;
-    });
-    // TODO(pavelgj): weird things happen without this line...
-    treePath = treePath.toList();
+    }).toList();
 
     if (treePath.isEmpty) return new Future.value(true);
 
@@ -469,7 +464,7 @@ class Router {
     });
   }
 
-  List<Future<bool>> _preEnter(String tail, Iterable<_Match> treePath) {
+  List<Future<bool>> _preEnter(String tail, List<_Match> treePath) {
     var preEnterFutures = <Future<bool>>[];
     treePath.forEach((_Match matchedRoute) {
       var preEnterEvent = new RoutePreEnterEvent._fromMatch(matchedRoute);
@@ -479,7 +474,7 @@ class Router {
     return preEnterFutures;
   }
 
-  Future<bool> _processNewRoute(Route startingFrom, Iterable<_Match> treePath,
+  Future<bool> _processNewRoute(Route startingFrom, List<_Match> treePath,
       String path) {
     return _leaveOldRoutes(startingFrom, treePath).then((bool allowed) {
       if (allowed) {
@@ -498,7 +493,7 @@ class Router {
     });
   }
 
-  Future<bool> _leaveOldRoutes(Route startingFrom, Iterable<_Match> treePath) {
+  Future<bool> _leaveOldRoutes(Route startingFrom, List<_Match> treePath) {
     if (treePath.isEmpty) return new Future.value(true);
     var event = new RouteLeaveEvent('', {}, startingFrom);
     return _leaveCurrentRoute(startingFrom, event);
@@ -512,13 +507,13 @@ class Router {
     return routes.where((r) => r.path.match(path) != null).toList();
   }
 
-  Iterable<_Match> _matchingTreePath(String path, RouteImpl baseRoute) {
-    List<_Match> treePath = <_Match>[];
+  List<_Match> _matchingTreePath(String path, RouteImpl baseRoute) {
+    final treePath = <_Match>[];
     Route matchedRoute;
     do {
       matchedRoute = null;
       List matchingRoutes = _matchingRoutes(path, baseRoute);
-      if (!matchingRoutes.isEmpty) {
+      if (matchingRoutes.isNotEmpty) {
         if (matchingRoutes.length > 1) {
           _logger.warning("More than one route matches $path $matchingRoutes");
         }
@@ -539,9 +534,9 @@ class Router {
   }
 
   bool _paramsChanged(RouteImpl baseRoute, UrlMatch match) {
-    return baseRoute._currentRoute._lastEvent.path != match.match ||
-        !mapsShallowEqual(baseRoute._currentRoute._lastEvent.parameters,
-            match.parameters);
+    var lastEvent = baseRoute._currentRoute._lastEvent;
+    return lastEvent.path != match.match ||
+        !mapsShallowEqual(lastEvent.parameters, match.parameters);
   }
 
   /// Navigates to a given relative route path, and parameters.
@@ -601,7 +596,7 @@ class Router {
   }
 
   List<String> _parseKeyVal(keyValPair) {
-    if (keyValPair.isEmpty) return ['', ''];
+    if (keyValPair.isEmpty) return const ['', ''];
     var splitPoint = keyValPair.indexOf('=') == -1 ?
         keyValPair.length : keyValPair.indexOf('=') + 1;
     var key = keyValPair.substring(0, splitPoint +
@@ -618,7 +613,8 @@ class Router {
   }
 
   Future<bool> _leaveCurrentRoute(RouteImpl base, RouteLeaveEvent e) =>
-      Future.wait(_leaveCurrentRouteHelper(base, e))
+      Future
+          .wait(_leaveCurrentRouteHelper(base, e))
           .then((values) => values.fold(true, (c, v) => c && v));
 
   List<Future<bool>> _leaveCurrentRouteHelper(RouteImpl base, RouteLeaveEvent e) {
@@ -628,8 +624,8 @@ class Router {
       // We create a copy of the route event
       var event = e._clone();
       base._currentRoute._onLeaveController.add(event);
-      futures.addAll(event._allowLeaveFutures);
-      futures.addAll(_leaveCurrentRouteHelper(base._currentRoute, event));
+      futures..addAll(event._allowLeaveFutures)
+             ..addAll(_leaveCurrentRouteHelper(base._currentRoute, event));
     }
     return futures;
   }
@@ -719,16 +715,16 @@ class Router {
    */
   List<Route> get activePath {
     var res = <RouteImpl>[];
-    var current = root;
-    while (current._currentRoute != null) {
-      current = current._currentRoute;
-      res.add(current);
+    var route = root;
+    while (route._currentRoute != null) {
+      route = route._currentRoute;
+      res.add(route);
     }
     return res;
   }
 
   /**
-   * A shortcut for router.root.getRoute().
+   * A shortcut for router.root.findRoute().
    */
   Route findRoute(String routePath) => root.findRoute(routePath);
 }
