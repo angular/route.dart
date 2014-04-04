@@ -10,8 +10,8 @@ class RouteHandle implements Route {
   final StreamController<RouteEnterEvent> _onEnterController;
   final StreamController<RouteLeaveEvent> _onLeaveController;
 
-  @deprecated
   @override
+  @Deprecated("use [onEnter] instead.")
   Stream<RouteEnterEvent> get onRoute => onEnter;
   @override
   Stream<RoutePreEnterEvent> get onPreEnter => _onPreEnterController.stream;
@@ -56,12 +56,12 @@ class RouteHandle implements Route {
   @override
   void addRoute({String name, Pattern path, bool defaultRoute: false,
       RouteEnterEventHandler enter, RoutePreEnterEventHandler preEnter,
-      RouteLeaveEventHandler leave, mount}) {
+      RouteLeaveEventHandler leave, mount, dontLeaveOnParamChanges: false}) {
     throw new UnsupportedError('addRoute is not supported in handle');
   }
 
   @override
-  @deprecated
+  @Deprecated("use [findRoute] instead.")
   Route getRoute(String routePath) => findRoute(routePath);
 
   @override
