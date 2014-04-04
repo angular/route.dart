@@ -94,15 +94,14 @@ class UrlPattern implements UrlMatcher, Pattern {
 
   String reverse(Iterable args, {bool useFragment: false}) {
     var sb = new StringBuffer();
-    var chars = pattern.split('');
     var argsIter = args.iterator;
 
     int depth = 0;
     int groupCount = 0;
     bool escaped = false;
 
-    for (int i = 0; i < chars.length; i++) {
-      var c = chars[i];
+    for (int i = 0; i < pattern.length; i++) {
+      var c = pattern[i];
       if (c == '\\' && escaped == false) {
         escaped = true;
       } else {
