@@ -12,6 +12,7 @@ final _paramPattern = r'([^/?]+)';
 class UrlTemplate implements UrlMatcher {
   List<String> _fields;
   RegExp _pattern;
+  String _strPattern;
   List _chunks;
 
   String toString() => '$_pattern';
@@ -19,8 +20,8 @@ class UrlTemplate implements UrlMatcher {
   int compareTo(UrlMatcher other) {
     final String tmpParamPattern = '\t';
     if (other is UrlTemplate) {
-      String thisPattern = _pattern.pattern.replaceAll(_paramPattern, tmpParamPattern);
-      String otherPattern = other._pattern.pattern.replaceAll(_paramPattern, tmpParamPattern);
+      String thisPattern = _strPattern.replaceAll(_paramPattern, tmpParamPattern);
+      String otherPattern = other._strPattern.replaceAll(_paramPattern, tmpParamPattern);
       List<String> thisPatternParts = thisPattern.split('/');
       List<String> otherPatternParts = otherPattern.split('/');
       if (thisPatternParts.length == otherPatternParts.length) {
@@ -69,7 +70,8 @@ class UrlTemplate implements UrlMatcher {
       sb.write(txt);
       _chunks.add(txt);
     }
-    _pattern = new RegExp(sb.toString());
+    _strPattern = sb.toString();
+    _pattern = new RegExp(_strPattern);
   }
 
   UrlMatch match(String url) {

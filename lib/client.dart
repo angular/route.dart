@@ -144,7 +144,7 @@ abstract class Route {
  * Route is a node in the tree of routes. The edge leading to the route is
  * defined by path.
  */
-class RouteImpl implements Route {
+class RouteImpl extends Route {
   @override
   final String name;
   @override
