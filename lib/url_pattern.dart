@@ -53,7 +53,7 @@ UrlPattern urlPattern(String p) => new UrlPattern(p);
  *       server.addRequestHandler(matchesUrl(articleUrl), serveArticle);
  *     }
  *
- *     serveArcticle(req, res) {
+ *     serveArticle(req, res) {
  *       var articleId = articleUrl.parse(req.path)[0];
  *       // ...
  *     }
@@ -83,7 +83,7 @@ UrlPattern urlPattern(String p) => new UrlPattern(p);
 class UrlPattern implements UrlMatcher, Pattern {
   final String pattern;
   RegExp _regex;
-  bool _hasFragment;
+  bool _hasFragment = false;
   RegExp _baseRegex;
 
   UrlPattern(this.pattern) {
@@ -94,15 +94,14 @@ class UrlPattern implements UrlMatcher, Pattern {
 
   String reverse(Iterable args, {bool useFragment: false}) {
     var sb = new StringBuffer();
-    var chars = pattern.split('');
     var argsIter = args.iterator;
 
     int depth = 0;
     int groupCount = 0;
     bool escaped = false;
 
-    for (int i = 0; i < chars.length; i++) {
-      var c = chars[i];
+    for (int i = 0; i < pattern.length; i++) {
+      var c = pattern[i];
       if (c == '\\' && escaped == false) {
         escaped = true;
       } else {
@@ -136,9 +135,7 @@ class UrlPattern implements UrlMatcher, Pattern {
         escaped = false;
       }
     }
-    if (depth > 0) {
-      throw new ArgumentError('unclosed group');
-    }
+    if (depth > 0) throw new ArgumentError('unclosed group');
     return sb.toString();
   }
 
@@ -148,9 +145,7 @@ class UrlPattern implements UrlMatcher, Pattern {
    */
   List<String> parse(String path) {
     var match = regex.firstMatch(path);
-    if (match == null) {
-      throw new ArgumentError('no match for $path');
-    }
+    if (match == null) throw new ArgumentError('no match for $path');
     var result = <String>[];
     for (int i = 1; i <= match.groupCount; i++) {
       result.add(match[i]);
@@ -160,9 +155,7 @@ class UrlPattern implements UrlMatcher, Pattern {
 
   UrlMatch match(String url) {
     var matches = allMatches(url);
-    if (matches.isEmpty) {
-      return null;
-    }
+    if (matches.isEmpty) return null;
     var match = matches.first;
     var tail = url.substring(match.group(0).length);
     Map parameters = new Map();
@@ -198,17 +191,10 @@ class UrlPattern implements UrlMatcher, Pattern {
    * fragment to the server, so the server will have to handle just the path
    * part.
    */
-  bool matchesNonFragment(String str) {
-    if (!_hasFragment) {
-      return matches(str);
-    } else {
-      return _matches(_baseRegex, str);
-    }
-  }
+  bool matchesNonFragment(String str) =>
+      _hasFragment ? _matches(_baseRegex, str) : matches(str);
 
-  Iterable<Match> allMatches(String str) {
-    return regex.allMatches(str);
-  }
+  Iterable<Match> allMatches(String str) => regex.allMatches(str);
 
   bool operator ==(other) =>
       (other is UrlPattern) && (other.pattern == pattern);
@@ -231,9 +217,7 @@ class UrlPattern implements UrlMatcher, Pattern {
       if (depth == 0) {
         // outside of groups, transform the pattern to matches the literal
         if (c == r'\') {
-          if (escaped) {
-            sb.write(r'\\');
-          }
+          if (escaped) sb.write(r'\\');
           escaped = !escaped;
         } else {
           if (_specialChars.hasMatch(c)) {
@@ -269,9 +253,7 @@ class UrlPattern implements UrlMatcher, Pattern {
         } else if (c == ')' && !escaped) {
           depth--;
           if (depth < 0) throw new ArgumentError('unmatched parenthesis');
-          if (depth == 0) {
-            lastGroupEnd = i;
-          }
+          if (depth == 0) lastGroupEnd = i;
         } else if (c == '#') {
           // TODO(justinfagnani): what else should be banned in groups? '/'?
           throw new ArgumentError('illegal # inside group');
@@ -285,9 +267,7 @@ class UrlPattern implements UrlMatcher, Pattern {
   }
 
   void _setBasePattern(String basePattern) {
-    if (_hasFragment == true) {
-      throw new ArgumentError('multiple # characters');
-    }
+    if (_hasFragment) throw new ArgumentError('multiple # characters');
     _hasFragment = true;
     _baseRegex = new RegExp('$basePattern\$');
   }
