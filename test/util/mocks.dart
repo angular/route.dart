@@ -34,3 +34,7 @@ class MockDocument extends Mock implements HtmlDocument {
     log.add(new LogEntry(name, '=title', [title], Action.IGNORE));
   }
 }
+
+class MockMouseEvent extends Mock implements MouseEvent {
+
+}

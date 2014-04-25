@@ -11,6 +11,8 @@ import 'package:logging/logging.dart';
 
 import 'src/utils.dart';
 
+import 'link_matcher.dart';
+import 'link_handler.dart';
 import 'url_matcher.dart';
 export 'url_matcher.dart';
 import 'url_template.dart';
@@ -406,6 +408,7 @@ class Router {
       new StreamController<RouteStartEvent>.broadcast(sync: true);
   final bool sortRoutes;
   bool _listen = false;
+  WindowClickHandler _linkHandler;
 
   /**
    * [useFragment] determines whether this Router uses pure paths with
@@ -413,18 +416,23 @@ class Router {
    * value is null which then determines the behavior based on
    * [History.supportsState].
    */
-  Router({bool useFragment, Window windowImpl, bool sortRoutes: true})
+  Router({bool useFragment, Window windowImpl, bool sortRoutes: true,
+         RouterLinkMatcher linkMatcher, WindowClickHandler linkHandler})
       : this._init(null, useFragment: useFragment, windowImpl: windowImpl,
-          sortRoutes: sortRoutes);
+          sortRoutes: sortRoutes, linkMatcher: linkMatcher, linkHandler: linkHandler);
 
 
   Router._init(Router parent, {bool useFragment, Window windowImpl,
-      this.sortRoutes})
+      this.sortRoutes, linkMatcher, linkHandler})
       : _useFragment = (useFragment == null)
             ? !History.supportsState
             : useFragment,
         _window = (windowImpl == null) ? window : windowImpl,
-        root = new RouteImpl._new();
+        root = new RouteImpl._new() {
+    var lm = linkMatcher == null ? new DefaultRouterLinkMatcher() : linkMatcher;
+    _linkHandler = linkHandler == null ?
+        new DefaultWindowLinkHandler(lm, this, _useFragment, _window, _normalizeHash) : linkHandler;
+  }
 
   /**
    * A stream of route calls.
@@ -682,20 +690,7 @@ class Router {
       _logger.finest('listen on win');
       appRoot.onClick
           .where((MouseEvent e) => !(e.ctrlKey || e.metaKey || e.shiftKey))
-          .where((MouseEvent e) => e.target is AnchorElement)
-          .listen((MouseEvent e) {
-            AnchorElement anchor = e.target;
-            if (anchor.host == _window.location.host) {
-              _logger.finest('clicked ${anchor.pathname}${anchor.hash}');
-              e.preventDefault();
-              var path = _useFragment
-                  ? _normalizeHash(anchor.hash)
-                  : '${anchor.pathname}';
-              route(path).then((allowed) {
-                if (allowed) _go(path, null, false);
-              });
-            }
-          });
+          .listen(_linkHandler);
     }
   }
 
