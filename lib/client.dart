@@ -710,14 +710,13 @@ class Router {
       });
 
   void _go(String path, String title, bool replace) {
-    if (title == null) title =  '';
     if (_useFragment) {
       if (replace) {
         _window.location.replace('#$path');
       } else {
         _window.location.assign('#$path');
       }
-      (_window.document as HtmlDocument).title = title;
+      if (title != null)(_window.document as HtmlDocument).title = title;
     } else {
       if (replace) {
         _window.history.replaceState(null, title, path);
