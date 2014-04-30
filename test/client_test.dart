@@ -239,6 +239,25 @@ main() {
 
   group('leave', () {
 
+    test('should leave children when parent selected', () {
+      var router = new Router();
+      String currentPathStr(Router router) => router.activePath.map((r) => r.name).join("+");
+      router.root
+        ..addRoute(path: '/parent',
+            name: 'parent',
+            leave: (_) => logMessage("parent leave"),
+            mount: (Route route) => route
+              ..addRoute(path: '/child',
+                  leave: (_) => logMessage("child leave"),
+                  name: 'child'));
+      router.route('/parent/child').then((_) {
+        expect(currentPathStr(router),"parent+child");
+        router.route('/parent').then((_) {
+          expect(currentPathStr(router),"parent");
+        });
+      });
+    });
+    
     test('should leave previous route and enter new', () {
       var counters = <String, int>{
         'otherPreEnter': 0,
