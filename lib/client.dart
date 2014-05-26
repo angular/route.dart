@@ -460,18 +460,34 @@ class Router {
     var treePath = _matchingTreePath(path, baseRoute);
     var cmpBase = baseRoute;
     var tail = path;
+    _Match tailMatch;
     // Skip all routes that are unaffected by this path.
     treePath = treePath.skipWhile((_Match matchedRoute) {
       var skip = cmpBase._currentRoute == matchedRoute.route &&
           !_paramsChanged(cmpBase, matchedRoute.urlMatch);
       if (skip) {
+        tailMatch = matchedRoute;
         cmpBase = matchedRoute.route;
         tail = matchedRoute.urlMatch.tail;
       }
       return skip;
     }).toList();
 
-    if (treePath.isEmpty) return new Future.value(true);
+    if (treePath.isEmpty) {
+      if( cmpBase._currentRoute != null) {
+        // a change from /a/b to /a, so leave on childrens is necessary
+        var event = new RouteLeaveEvent('', {}, cmpBase);
+        return _leaveCurrentRoute(cmpBase, event).then((bool allowed) {
+          if (allowed) {
+            _unsetAllCurrentRoutes(cmpBase);
+            return true;
+          }
+          return false;
+        });
+      } else {
+        return new Future.value(true);  
+      }
+    }
 
     var preEnterFutures = _preEnter(tail, treePath);
 
@@ -651,9 +667,12 @@ class Router {
       List<Future<bool>> pendingResponses = <Future<bool>>[];
       // We create a copy of the route event
       var event = e._clone();
+      // first leave childrens
+      List<Future<bool>> childrensLeave = _leaveCurrentRouteHelper(base._currentRoute, event);
+      // and then current parent
       base._currentRoute._onLeaveController.add(event);
-      futures..addAll(event._allowLeaveFutures)
-             ..addAll(_leaveCurrentRouteHelper(base._currentRoute, event));
+      futures..addAll(childrensLeave)
+             ..addAll(event._allowLeaveFutures);
     }
     return futures;
   }

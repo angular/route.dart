@@ -239,8 +239,30 @@ main() {
 
   group('leave', () {
 
+    test('should leave children when parent selected', () {
+      var router = new Router();
+      String currentPathStr(Router router) => router.activePath.map((r) => r.name).join("+");
+      router.root
+        ..addRoute(path: '/parent',
+            name: 'parent',
+            leave: (_) => logMessage("parent leave"),
+            mount: (Route route) => route
+              ..addRoute(path: '/child',
+                  leave: (_) => logMessage("child leave"),
+                  name: 'child'));
+      router.route('/parent/child').then((_) {
+        expect(currentPathStr(router),"parent+child");
+        router.route('/parent').then((_) {
+          expect(currentPathStr(router),"parent");
+        });
+      });
+    });
+    
     test('should leave previous route and enter new', () {
       var counters = <String, int>{
+        'otherPreEnter': 0,
+        'otherEnter': 0,
+        'otherLeave': 0,
         'fooPreEnter': 0,
         'fooEnter': 0,
         'fooLeave': 0,
@@ -251,26 +273,39 @@ main() {
         'bazEnter': 0,
         'bazLeave': 0
       };
+      var eventsList = "";
+      counterUpdate(String name) {
+        counters[name]++;
+        eventsList = eventsList + "|" + name;
+      }
       var router = new Router();
       router.root
+        ..addRoute(path: '/other',
+            name: 'other',
+            preEnter: (_) => counterUpdate('otherPreEnter'),
+            enter: (_) => counterUpdate('otherEnter'),
+            leave: (_) => counterUpdate('otherLeave'))
         ..addRoute(path: '/foo',
             name: 'foo',
-            preEnter: (_) => counters['fooPreEnter']++,
-            enter: (_) => counters['fooEnter']++,
-            leave: (_) => counters['fooLeave']++,
+            preEnter: (_) => counterUpdate('fooPreEnter'),
+            enter: (_) => counterUpdate('fooEnter'),
+            leave: (_) => counterUpdate('fooLeave'),
             mount: (Route route) => route
               ..addRoute(path: '/bar',
                   name: 'bar',
-                  preEnter: (_) => counters['barPreEnter']++,
-                  enter: (_) => counters['barEnter']++,
-                  leave: (_) => counters['barLeave']++)
+                  preEnter: (_) => counterUpdate('barPreEnter'),
+                  enter: (_) => counterUpdate('barEnter'),
+                  leave: (_) => counterUpdate('barLeave'))
               ..addRoute(path: '/baz',
                   name: 'baz',
-                  preEnter: (_) => counters['bazPreEnter']++,
-                  enter: (_) => counters['bazEnter']++,
-                  leave: (_) => counters['bazLeave']++));
+                  preEnter: (_) => counterUpdate('bazPreEnter'),
+                  enter: (_) => counterUpdate('bazEnter'),
+                  leave: (_) => counterUpdate('bazLeave')));
 
       expect(counters, {
+        'otherPreEnter': 0,
+        'otherEnter': 0,
+        'otherLeave': 0,
         'fooPreEnter': 0,
         'fooEnter': 0,
         'fooLeave': 0,
@@ -281,9 +316,13 @@ main() {
         'bazEnter': 0,
         'bazLeave': 0
       });
+      expect(eventsList,"");
 
       router.route('/foo/bar').then(expectAsync((_) {
         expect(counters, {
+          'otherPreEnter': 0,
+          'otherEnter': 0,
+          'otherLeave': 0,
           'fooPreEnter': 1,
           'fooEnter': 1,
           'fooLeave': 0,
@@ -294,9 +333,14 @@ main() {
           'bazEnter': 0,
           'bazLeave': 0
         });
+        String step1 = "|fooPreEnter|barPreEnter|fooEnter|barEnter";
+        expect(eventsList,step1);
 
         router.route('/foo/baz').then(expectAsync((_) {
           expect(counters, {
+            'otherPreEnter': 0,
+            'otherEnter': 0,
+            'otherLeave': 0,
             'fooPreEnter': 1,
             'fooEnter': 1,
             'fooLeave': 0,
@@ -307,6 +351,28 @@ main() {
             'bazEnter': 1,
             'bazLeave': 0
           });
+
+        String step2 = "|bazPreEnter|barLeave|bazEnter";
+        expect(eventsList,step1 + step2);
+        
+        router.route('/other').then(expectAsync((_) {
+          expect(counters, {
+                      'otherPreEnter': 1,
+                      'otherEnter': 1,
+                      'otherLeave': 0,
+                      'fooPreEnter': 1,
+                      'fooEnter': 1,
+                      'fooLeave': 1,
+                      'barPreEnter': 1,
+                      'barEnter': 1,
+                      'barLeave': 1,
+                      'bazPreEnter': 1,
+                      'bazEnter': 1,
+                      'bazLeave': 1
+                    });
+          String step3 = "|otherPreEnter|bazLeave|fooLeave|otherEnter";
+          expect(eventsList,step1 + step2 + step3);
+        }));
         }));
       }));
     });
