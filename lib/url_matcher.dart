@@ -21,7 +21,7 @@ abstract class UrlMatcher extends Comparable<UrlMatcher> {
   /**
    * Returns a list of named parameters in the URL.
    */
-  List<String> urlParameterNames();
+  List<String> get urlParameterNames;
 
   /**
    * Returns a value which is:

@@ -287,7 +287,7 @@ class UrlPattern implements UrlMatcher, Pattern {
     throw new UnimplementedError('matchAsPrefix is not implemented');
   }
 
-  List<String> urlParameterNames() {
+  List<String> get urlParameterNames {
     throw new UnimplementedError('urlParameterNames is not implemented');
   }
 

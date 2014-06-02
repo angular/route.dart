@@ -291,7 +291,7 @@ class RouteImpl extends Route {
     parameters.keys.forEach((String prefixedKey) {
       if (prefixedKey.startsWith('${route.name}.')) {
         var key = prefixedKey.substring('${route.name}.'.length);
-        if (!route.path.urlParameterNames().contains(key)) {
+        if (!route.path.urlParameterNames.contains(key)) {
           queryParams[prefixedKey] = parameters[prefixedKey];
         }
       }

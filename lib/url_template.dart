@@ -89,5 +89,5 @@ class UrlTemplate implements UrlMatcher {
   String reverse({Map parameters, String tail: ''}) =>
     _chunks.map((c) => c is Function ? c(parameters) : c).join() + tail;
 
-  List<String> urlParameterNames() => _fields;
+  List<String> get urlParameterNames => _fields;
 }
