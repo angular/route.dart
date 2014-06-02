@@ -50,11 +50,13 @@ class RouteHandle implements Route {
   void discard() {
     _logger.finest('discarding handle for $_route');
     _onPreEnterSubscription.cancel();
-    _onPreLeaveSubscription.cancel();
     _onEnterSubscription.cancel();
+    _onPreLeaveSubscription.cancel();
     _onLeaveSubscription.cancel();
     _onEnterController.close();
+    _onPreEnterController.close();
     _onLeaveController.close();
+    _onPreLeaveController.close();
     _childHandles
         ..forEach((RouteHandle c) => c.discard())
         ..clear();
