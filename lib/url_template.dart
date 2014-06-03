@@ -10,7 +10,7 @@ final _paramPattern = r'([^/?]+)';
  * templates like: /foo/:bar/baz
  */
 class UrlTemplate implements UrlMatcher {
-  List<String> _fields;
+  List<String> _paramNames;
   RegExp _pattern;
   String _strPattern;
   List _chunks;
@@ -47,18 +47,19 @@ class UrlTemplate implements UrlMatcher {
     _compileTemplate(template);
   }
 
+  /// Compile the URL template into a [RegExp]
   void _compileTemplate(String template) {
     template = template.
-        replaceAllMapped(_specialChars, (m) => r'\' + m.group(0));
-    _fields = <String>[];
+        replaceAllMapped(_specialChars, (m) => r'\' + m[0]);
+    _paramNames = <String>[];
     _chunks = [];
     var exp = new RegExp(r':(\w+)');
     StringBuffer sb = new StringBuffer('^');
     int start = 0;
     exp.allMatches(template).forEach((Match m) {
-      var paramName = m.group(1);
+      var paramName = m[1];
       var txt = template.substring(start, m.start);
-      _fields.add(paramName);
+      _paramNames.add(paramName);
       _chunks.add(txt);
       _chunks.add((Map params) => params != null ? params[paramName] : null);
       sb.write(txt);
@@ -66,7 +67,7 @@ class UrlTemplate implements UrlMatcher {
       start = m.end;
     });
     if (start != template.length) {
-      var txt = template.substring(start, template.length);
+      var txt = template.substring(start);
       sb.write(txt);
       _chunks.add(txt);
     }
@@ -75,19 +76,18 @@ class UrlTemplate implements UrlMatcher {
   }
 
   UrlMatch match(String url) {
-    var matches = _pattern.allMatches(url);
-    if (matches.isEmpty) return null;
-    var parameters = new Map();
-    Match match = matches.first;
+    var match = _pattern.firstMatch(url);
+    if (match == null) return null;
+    var parameters = <String, String>{};
     for (var i = 0; i < match.groupCount; i++) {
-      parameters[_fields[i]] = match.group(i + 1);
+      parameters[_paramNames[i]] = match[i + 1];
     }
-    var tail = url.substring(match.group(0).length);
-    return new UrlMatch(match.group(0), tail, parameters);
+    var tail = url.substring(match[0].length);
+    return new UrlMatch(match[0], tail, parameters);
   }
 
   String reverse({Map parameters, String tail: ''}) =>
     _chunks.map((c) => c is Function ? c(parameters) : c).join() + tail;
 
-  List<String> urlParameterNames() => _fields;
+  List<String> urlParameterNames() => _paramNames;
 }

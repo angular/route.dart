@@ -8,11 +8,11 @@ import 'client.dart';
 typedef String _HashNormalizer(String);
 
 /**
- * WindowClickHandler can be used as a hook into [Router] to
+ * [WindowClickHandler] can be used as a hook into [Router] to
  * modify behavior right after user clicks on an element, and
  * before the URL in the browser changes.
  */
-typedef WindowClickHandler(Event e);
+typedef void WindowClickHandler(Event e);
 
 /**
  * This is default behavior used by [Router] to handle clicks on elements.
@@ -32,10 +32,10 @@ class DefaultWindowClickHandler {
 
 
   DefaultWindowClickHandler(this._linkMatcher,
-                     this._router,
-                     this._useFragment,
-                     this._window,
-                     this._normalizer);
+                            this._router,
+                            this._useFragment,
+                            this._window,
+                            this._normalizer);
 
   void call(Event e) {
     Element el = e.target;
@@ -51,7 +51,7 @@ class DefaultWindowClickHandler {
     if (anchor.host == _window.location.host) {
       e.preventDefault();
       _router.gotoUrl(
-          _useFragment ? _normalizer(anchor.hash) : '${anchor.pathname}');
+          _useFragment ? _normalizer(anchor.hash) : anchor.pathname);
     }
   }
 }

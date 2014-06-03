@@ -24,17 +24,17 @@ UrlTemplate
 -----------
 The default implementation of the `UrlMatcher` is `UrlTemplate`. As an example,
 consider a blog with a home page and an article page. The article URL has the
-form /article/1234. It can matched by the following template:
+form `/article/1234`. It can matched by the following template:
 `/article/:articleId`.
 
 Router
---------------
+------
 
 Router is a stateful object that contains routes and can perform URL routing
 on those routes.
 
 The `Router` can listen to `Window.onPopState` (or fallback to
-Window.onHashChange in older browsers) events and invoke the correct
+`Window.onHashChange` in older browsers) event and invoke the correct
 handler so that the back button seamlessly works.
 
 Example (client.dart):
@@ -53,7 +53,7 @@ main() {
 }
 
 void showHome(RouteEvent e) {
-  // nothing to parse from path, since there are no groups
+  // nothing to parse from path, since there are no parameters
 }
 
 void showArticle(RouteEvent e) {
@@ -63,7 +63,7 @@ void showArticle(RouteEvent e) {
 }
 ```
 
-The client side router can let you define nested routes.
+The client side router let you define nested routes.
 
 ```dart
 var router = new Router();
@@ -98,8 +98,8 @@ router.root
 ```
 
 The mount parameter takes either a function that accepts an instance of a new
-child router as the only parameter, or an instance of an object that implements
-Routable interface.
+child router as the only parameter, or an instance of a class that implements
+the Routable interface:
 
 ```dart
 typedef void MountFn(Router router);
@@ -113,18 +113,18 @@ abstract class Routable {
 }
 ```
 
-In either case, the child router is instantiated by the parent router an
+In either case, the child router is instantiated by the parent router and
 injected into the mount point, at which point child router can be configured
 with new routes.
 
 Routing with hierarchical router: when the parent router performs a prefix
 match on the URL, it removes the matched part from the URL and invokes the
-child router with the remaining tail.
+child router with the remaining part (the "tail").
 
 For instance, with the above example lets consider this URL: `/user/jsmith/article/1234`.
-Route "user" will match `/user/jsmith` and invoke the child router with `/article/1234`.
-Route "article" will match `/article/1234` and invoke the child router with ``.
-Route "view" will be matched as the default route.
+The "user" Route will match `/user/jsmith` and invoke the child router with `/article/1234`.
+The "article" Route  will match `/article/1234` and invoke the child router with ``.
+The "view" Route  will be matched as the default route.
 The resulting route path will be: `user -> article -> view`, or simply `user.article.view`
 
 Named Routes in Hierarchical Routers
@@ -143,5 +143,5 @@ router.go('user.article.edit', {
 );
 ```
 
-If "go" is invoked on child routers, the router can automatically reconstruct
-and generate the new URL from the state in the parent routers.
+When `go()` is invoked on a child router, the generated URL automatically takes the 
+parent router states into account.

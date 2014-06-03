@@ -29,23 +29,15 @@ typedef void RouteEnterEventHandler(RouteEnterEvent event);
 typedef void RoutePreLeaveEventHandler(RoutePreLeaveEvent event);
 typedef void RouteLeaveEventHandler(RouteLeaveEvent event);
 
-/**
- * [Route] represents a node in the route tree.
- */
+/// [Route] is the base class for nodes in the route tree.
 abstract class Route {
-  /**
-   * Name of the route. Used when querying routes.
-   */
+  /// Name of the route. Used when querying routes.
   String get name;
 
-  /**
-   * A path fragment [UrlMatcher] for this route.
-   */
+  /// A path fragment [UrlMatcher] for this route.
   UrlMatcher get path;
 
-  /**
-   * Parent route in the route tree.
-   */
+  /// Parent route in the route tree.
   Route get parent;
 
   /**
@@ -61,7 +53,8 @@ abstract class Route {
   Map get parameters;
 
   /**
-   * Whether to trigger the leave event when only the parameters change.
+   * Whether to trigger the preleave and leave events when only the
+   * parameters change.
    */
   bool get dontLeaveOnParamChanges;
 
@@ -85,6 +78,14 @@ abstract class Route {
    * indicating whether enter is permitted (true) or not (false).
    */
   Stream<RoutePreEnterEvent> get onPreEnter;
+
+  /**
+   * Returns a stream of [RouteEnterEvent] events. The [RouteEnterEvent] event
+   * is fired when route has already been made active, but before subroutes
+   * are entered.  The event starts at the root and propagates from parent
+   * to child routes.
+   */
+  Stream<RouteEnterEvent> get onEnter;
 
   /**
    * Returns a stream of [RoutePreLeaveEvent] events. The [RoutePreLeaveEvent]
@@ -111,14 +112,6 @@ abstract class Route {
    * https://github.com/angular/route.dart/issues/28
    */
   Stream<RouteLeaveEvent> get onLeave;
-
-  /**
-   * Returns a stream of [RouteEnterEvent] events. The [RouteEnterEvent] event
-   * is fired when route has already been made active, but before subroutes
-   * are entered.  The event starts at the root and propagates from parent
-   * to child routes.
-   */
-  Stream<RouteEnterEvent> get onEnter;
 
   void addRoute({String name, Pattern path, bool defaultRoute: false,
         RouteEnterEventHandler enter, RoutePreEnterEventHandler preEnter,
@@ -148,9 +141,7 @@ abstract class Route {
    */
   Route findRoute(String routePath);
 
-  /**
-   * Create an return a new [RouteHandle] for this route.
-   */
+  /// Create an return a new [RouteHandle] for this route.
   RouteHandle newHandle();
 
   String toString() => '[Route: $name]';
@@ -185,18 +176,19 @@ class RouteImpl extends Route {
   @override
   Stream<RouteEvent> get onPreEnter => _onPreEnterController.stream;
   @override
+  Stream<RouteEvent> get onEnter => _onEnterController.stream;
+  @override
   Stream<RouteEvent> get onPreLeave => _onPreLeaveController.stream;
   @override
   Stream<RouteEvent> get onLeave => _onLeaveController.stream;
-  @override
-  Stream<RouteEvent> get onEnter => _onEnterController.stream;
+
 
   RouteImpl._new({this.name, this.path, this.parent,
                  this.dontLeaveOnParamChanges: false})
-      : _onEnterController =
-            new StreamController<RouteEnterEvent>.broadcast(sync: true),
-        _onPreEnterController =
+      : _onPreEnterController =
             new StreamController<RoutePreEnterEvent>.broadcast(sync: true),
+        _onEnterController =
+            new StreamController<RouteEnterEvent>.broadcast(sync: true),
         _onPreLeaveController =
             new StreamController<RoutePreLeaveEvent>.broadcast(sync: true),
         _onLeaveController =
@@ -211,7 +203,7 @@ class RouteImpl extends Route {
       throw new ArgumentError('name is required for all routes');
     }
     if (name.contains(_PATH_SEPARATOR)) {
-      throw new ArgumentError('name cannot contain dot.');
+      throw new ArgumentError('name cannot contain "$_PATH_SEPARATOR"');
     }
     if (_routes.containsKey(name)) {
       throw new ArgumentError('Route $name already exists');
@@ -254,16 +246,16 @@ class RouteImpl extends Route {
       _logger.warning('Invalid route name: $routeName $_routes');
       return null;
     }
-    var routeToGo = _routes[routeName];
+    var childRoute = _routes[routeName];
     var childPath = routePath.substring(routeName.length);
-    return childPath.isEmpty ? routeToGo :
-        routeToGo.getRoute(childPath.substring(1));
+    return childPath.isEmpty ? childRoute :
+        childRoute.getRoute(childPath.substring(1));
   }
 
   String _getHead(String tail, Map queryParams) {
     if (parent == null) return tail;
     if (parent._currentRoute == null) {
-      throw new StateError('Router $parent has no current router.');
+      throw new StateError('Router $parent has no current route.');
     }
     _populateQueryParams(parent._currentRoute._lastEvent.parameters,
         parent._currentRoute, queryParams);
@@ -271,7 +263,7 @@ class RouteImpl extends Route {
   }
 
   String _getTailUrl(String routePath, Map parameters, Map queryParams) {
-    var routeName = routePath.split('.').first;
+    var routeName = routePath.split(_PATH_SEPARATOR).first;
     if (!_routes.containsKey(routeName)) {
       throw new StateError('Invalid route name: $routeName');
     }
@@ -288,9 +280,10 @@ class RouteImpl extends Route {
   }
 
   void _populateQueryParams(Map parameters, Route route, Map queryParams) {
+    final routeSep = route.name + _PATH_SEPARATOR;
     parameters.keys.forEach((String prefixedKey) {
-      if (prefixedKey.startsWith('${route.name}.')) {
-        var key = prefixedKey.substring('${route.name}.'.length);
+      if (prefixedKey.startsWith(routeSep)) {
+        var key = prefixedKey.substring(routeSep.length);
         if (!route.path.urlParameterNames().contains(key)) {
           queryParams[prefixedKey] = parameters[prefixedKey];
         }
@@ -298,51 +291,34 @@ class RouteImpl extends Route {
     });
   }
 
-  Map _joinParams(Map parameters, RouteEvent lastEvent) => lastEvent == null
-      ? parameters
-      : new Map.from(lastEvent.parameters)..addAll(parameters);
+  Map _joinParams(Map parameters, RouteEvent lastEvent) => lastEvent == null ?
+      parameters :
+      new Map.from(lastEvent.parameters)..addAll(parameters);
 
   /**
    * Returns a URL for this route. The tail (url generated by the child path)
-   * will be passes to the UrlMatcher to be properly appended in the
-   * right place.
+   * will be passed to the UrlMatcher to be appended in the right place.
    */
   String _reverse(String tail) =>
       path.reverse(parameters: _lastEvent.parameters, tail: tail);
 
-  /**
-   * Create an return a new [RouteHandle] for this route.
-   */
   @override
   RouteHandle newHandle() {
     _logger.finest('newHandle for $this');
     return new RouteHandle._new(this);
   }
 
-  /**
-   * Indicates whether this route is currently active. Root route is always
-   * active.
-   */
   @override
   bool get isActive =>
       parent == null ? true : identical(parent._currentRoute, this);
 
-  /**
-   * Returns parameters for the currently active route. If the route is not
-   * active the getter returns null.
-   */
   @override
-  Map get parameters {
-    if (isActive) {
-      return _lastEvent == null ? {} : new Map.from(_lastEvent.parameters);
-    }
-    return null;
-  }
+  Map get parameters => isActive ?
+      _lastEvent == null ? {} : new Map.from(_lastEvent.parameters) :
+      null;
 }
 
-/**
- * Route enter or leave event.
- */
+/// Base class route [Route] events
 abstract class RouteEvent {
   final String path;
   final Map parameters;
@@ -371,14 +347,14 @@ class RoutePreEnterEvent extends RouteEvent {
 
 class RouteEnterEvent extends RouteEvent {
 
-  RouteEnterEvent(path, parameters, route)  : super(path, parameters, route);
+  RouteEnterEvent(path, parameters, route) : super(path, parameters, route);
 
   RouteEnterEvent._fromMatch(_Match m)
       : this(m.urlMatch.match, m.urlMatch.parameters, m.route);
 }
 
 class RouteLeaveEvent extends RouteEvent {
-  RouteLeaveEvent(path, parameters, route)  : super(path, parameters, route);
+  RouteLeaveEvent(path, parameters, route) : super(path, parameters, route);
 
   RouteLeaveEvent _clone() => new RouteLeaveEvent(path, parameters, route);
 }
@@ -386,7 +362,7 @@ class RouteLeaveEvent extends RouteEvent {
 class RoutePreLeaveEvent extends RouteEvent {
   final _allowLeaveFutures = <Future<bool>>[];
 
-  RoutePreLeaveEvent(path, parameters, route)  : super(path, parameters, route);
+  RoutePreLeaveEvent(path, parameters, route) : super(path, parameters, route);
 
   /**
    * Can be called with the future which will complete with a boolean
@@ -400,13 +376,9 @@ class RoutePreLeaveEvent extends RouteEvent {
   RoutePreLeaveEvent _clone() => new RoutePreLeaveEvent(path, parameters, route);
 }
 
-/**
- * Event emitted when routing starts.
- */
+/// Event emitted when routing starts.
 class RouteStartEvent {
-  /**
-   * URI that was passed to [Router.route].
-   */
+  /// URI that was passed to [Router.route].
   final String uri;
 
   /**
@@ -459,12 +431,11 @@ class Router {
         root = new RouteImpl._new() {
     var lm = linkMatcher == null ? new DefaultRouterLinkMatcher() : linkMatcher;
     _clickHandler = clickHandler == null ?
-        new DefaultWindowClickHandler(lm, this, _useFragment, _window, _normalizeHash) : clickHandler;
+        new DefaultWindowClickHandler(lm, this, _useFragment, _window, _normalizeHash) :
+        clickHandler;
   }
 
-  /**
-   * A stream of route calls.
-   */
+  /// A stream of route calls.
   Stream<RouteStartEvent> get onRouteStart => _onRouteStart.stream;
 
   /**
@@ -571,7 +542,7 @@ class Router {
     });
   }
 
-  _enter(RouteImpl startingFrom, Iterable<_Match> treePath, String path) {
+  void _enter(RouteImpl startingFrom, Iterable<_Match> treePath, String path) {
     var base = startingFrom;
     treePath.forEach((_Match matchedRoute) {
       var event = new RouteEnterEvent._fromMatch(matchedRoute);
@@ -666,28 +637,30 @@ class Router {
   }
 
   Map _parseQuery(Route route, String path) {
-    var params = {};
+    final params = {};
+    final routeSep = route.name + _PATH_SEPARATOR;
     if (path.indexOf('?') == -1) return params;
     var queryStr = path.substring(path.indexOf('?') + 1);
     queryStr.split('&').forEach((String keyValPair) {
       List<String> keyVal = _parseKeyVal(keyValPair);
-      if (keyVal[0].startsWith('${route.name}.')) {
-        var key = keyVal[0].substring('${route.name}.'.length);
+      if (keyVal[0].startsWith(routeSep)) {
+        var key = keyVal[0].substring(routeSep.length);
         if (key.isNotEmpty) params[key] = Uri.decodeComponent(keyVal[1]);
       }
     });
     return params;
   }
 
-  List<String> _parseKeyVal(kvPair) {
+  /// Parses a string formatted as "key=value"
+  List<String> _parseKeyVal(String kvPair) {
     if (kvPair.isEmpty) {
       return const ['', ''];
     }
     var splitPoint = kvPair.indexOf('=');
 
     return (splitPoint == -1) ?
-        [kvPair, '']
-        : [kvPair.substring(0, splitPoint), kvPair.substring(splitPoint + 1)];
+        [kvPair, '']:
+        [kvPair.substring(0, splitPoint), kvPair.substring(splitPoint + 1)];
   }
 
   /**
@@ -708,7 +681,7 @@ class Router {
       route(_normalizeHash(_window.location.hash));
     } else {
       String getPath() =>
-          '${_window.location.pathname}${_window.location.hash}';
+          _window.location.pathname + _window.location.hash;
 
       _window.onPopState.listen((_) {
         route(getPath()).then((allowed) {
@@ -753,7 +726,7 @@ class Router {
       }
     } else {
       if (title == null) {
-        title = _window.document.title;
+        title =  (_window.document as HtmlDocument).title;
       }
       if (replace) {
         _window.history.replaceState(null, title, path);
@@ -777,9 +750,7 @@ class Router {
     return res;
   }
 
-  /**
-   * A shortcut for router.root.findRoute().
-   */
+  /// A shortcut for router.root.findRoute().
   Route findRoute(String routePath) => root.findRoute(routePath);
 }
 
@@ -789,5 +760,5 @@ class _Match {
 
   _Match(this.route, this.urlMatch);
 
-  toString() => route.toString();
+  String toString() => route.toString();
 }

@@ -2,7 +2,7 @@ part of route.client;
 
 /**
  * A helper Router handle that scopes all route event subsriptions to it's
- * instance and provides an convinience [discard] method.
+ * instance and provides an convenience [discard] method.
  */
 class RouteHandle implements Route {
   Route _route;
@@ -83,9 +83,7 @@ class RouteHandle implements Route {
     return handle;
   }
 
-  /**
-   * Create an return a new [RouteHandle] for this route.
-   */
+  /// Create an return a new [RouteHandle] for this route.
   @override
   RouteHandle newHandle() {
     _logger.finest('newHandle for $this');
