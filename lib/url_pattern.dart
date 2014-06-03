@@ -93,7 +93,7 @@ class UrlPattern implements UrlMatcher, Pattern {
   RegExp get regex => _regex;
 
   String reverse(Iterable args, {bool useFragment: false}) {
-    var sb = new StringBuffer();
+    var url = '';
     var argsIter = args.iterator;
 
     int depth = 0;
@@ -107,19 +107,19 @@ class UrlPattern implements UrlMatcher, Pattern {
       } else {
         if (c == '(') {
           if (escaped && depth == 0) {
-            sb.write(c);
+            url += c;
           }
           if (!escaped) depth++;
         } else if (c == ')') {
           if (escaped && depth == 0) {
-            sb.write(c);
+            url += c;
           } else if (!escaped) {
             if (depth == 0) throw new ArgumentError('unmatched parentheses');
             depth--;
             if (depth == 0) {
               // append the nth arg
               if (argsIter.moveNext()) {
-                sb.write(argsIter.current.toString());
+                url += argsIter.current.toString();
               } else {
                 throw new ArgumentError('more groups than args');
               }
@@ -127,9 +127,9 @@ class UrlPattern implements UrlMatcher, Pattern {
           }
         } else if (depth == 0) {
           if (c == '#' && !useFragment) {
-            sb.write('/');
+            url += '/';
           } else {
-            sb.write(c);
+            url += c;
           }
         }
         escaped = false;
@@ -138,7 +138,7 @@ class UrlPattern implements UrlMatcher, Pattern {
     if (depth > 0) {
       throw new ArgumentError('unclosed group');
     }
-    return sb.toString();
+    return url;
   }
 
   /**
@@ -210,12 +210,11 @@ class UrlPattern implements UrlMatcher, Pattern {
   String toString() => 'UrlPattern(${pattern.toString()})';
 
   _parse(String pattern) {
-    var sb = new StringBuffer();
+    var regexp = '^';
     int depth = 0;
     int lastGroupEnd = -2;
     bool escaped = false;
 
-    sb.write('^');
     var chars = pattern.split('');
     for (var i = 0; i < chars.length; i++) {
       var c = chars[i];
@@ -224,17 +223,17 @@ class UrlPattern implements UrlMatcher, Pattern {
         // outside of groups, transform the pattern to matches the literal
         if (c == r'\') {
           if (escaped) {
-            sb.write(r'\\');
+            regexp += r'\\';
           }
           escaped = !escaped;
         } else {
           if (_specialChars.hasMatch(c)) {
-            sb.write('\\$c');
+            regexp += '\\' + c;
           } else if (c == '(') {
             if (escaped) {
-              sb.write(r'\(');
+              regexp += r'\(';
             } else {
-              sb.write('(');
+              regexp += '(';
               if (lastGroupEnd == i - 1) {
                 throw new ArgumentError('ambiguous adjecent top-level groups');
               }
@@ -242,15 +241,15 @@ class UrlPattern implements UrlMatcher, Pattern {
             }
           } else if (c == ')') {
             if (escaped) {
-              sb.write(r'\)');
+              regexp += r'\)';
             } else {
               throw new ArgumentError('unmatched parenthesis');
             }
           } else if (c == '#') {
-            _setBasePattern(sb.toString());
-            sb.write('[/#]');
+            _setBasePattern(regexp);
+            regexp += '[/#]';
           } else {
-            sb.write(c);
+            regexp += c;
           }
           escaped = false;
         }
@@ -269,10 +268,10 @@ class UrlPattern implements UrlMatcher, Pattern {
           throw new ArgumentError('illegal # inside group');
         }
         escaped = (c == r'\' && !escaped);
-        sb.write(c);
+        regexp += c;
       }
     }
-    _regex = new RegExp(sb.toString());
+    _regex = new RegExp(regexp);
   }
 
   void _setBasePattern(String basePattern) {

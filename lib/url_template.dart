@@ -53,7 +53,7 @@ class UrlTemplate implements UrlMatcher {
     _fields = <String>[];
     _chunks = [];
     var exp = new RegExp(r':(\w+)');
-    StringBuffer sb = new StringBuffer('^');
+    _strPattern = '^';
     int start = 0;
     exp.allMatches(template).forEach((Match m) {
       var paramName = m.group(1);
@@ -61,16 +61,14 @@ class UrlTemplate implements UrlMatcher {
       _fields.add(paramName);
       _chunks.add(txt);
       _chunks.add((Map params) => params != null ? params[paramName] : null);
-      sb.write(txt);
-      sb.write(_paramPattern);
+      _strPattern += txt + _paramPattern;
       start = m.end;
     });
     if (start != template.length) {
       var txt = template.substring(start, template.length);
-      sb.write(txt);
+      _strPattern +=  txt;
       _chunks.add(txt);
     }
-    _strPattern = sb.toString();
     _pattern = new RegExp(_strPattern);
   }
 
