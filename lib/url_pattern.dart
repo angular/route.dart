@@ -171,10 +171,8 @@ class UrlPattern implements UrlMatcher, Pattern {
     return new UrlMatch(match.group(0), tail, parameters);
   }
 
-  /**
-   * Returns true if this pattern matches [path].
-   */
-  bool matches(String str) => _matches(regex, str);
+  /// Returns whether this pattern matches [path].
+  bool matches(String path) => _matches(regex, path);
 
   // TODO(justinfagnani): file bug for similar method to be added to Pattern
   bool _matches(Pattern p, String str) {

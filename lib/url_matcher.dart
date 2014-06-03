@@ -18,9 +18,7 @@ abstract class UrlMatcher extends Comparable<UrlMatcher> {
    */
   String reverse({Map parameters, String tail});
 
-  /**
-   * Returns a list of named parameters in the URL.
-   */
+  /// Returns a list of named parameters in the URL.
   List<String> urlParameterNames();
 
   /**
@@ -32,17 +30,16 @@ abstract class UrlMatcher extends Comparable<UrlMatcher> {
   int compareTo(UrlMatcher other);
 }
 
-/**
- * Object representing a successful URL match.
- */
+/// [UrlMatch] represents a successful URL match.
 class UrlMatch {
   /// Matched section of the URL
   final String match;
 
+  /// Parameters extracted from the [match]ed section
+  final Map<String, String> parameters;
+
   /// Remaining unmatched suffix
   final String tail;
-
-  final Map parameters;
 
   UrlMatch(this.match, this.tail, this.parameters);
 

@@ -8,7 +8,7 @@ import 'client.dart';
 typedef String _HashNormalizer(String);
 
 /**
- * WindowClickHandler can be used as a hook into [Router] to
+ * [WindowClickHandler] can be used as a hook into [Router] to
  * modify behavior right after user clicks on an element, and
  * before the URL in the browser changes.
  */

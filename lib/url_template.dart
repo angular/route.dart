@@ -47,6 +47,7 @@ class UrlTemplate implements UrlMatcher {
     _compileTemplate(template);
   }
 
+  /// Compile the URL template into a [RegExp]
   void _compileTemplate(String template) {
     template = template.
         replaceAllMapped(_specialChars, (m) => r'\' + m.group(0));
