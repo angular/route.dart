@@ -4,6 +4,7 @@ import 'url_matcher.dart';
 
 final _specialChars = new RegExp(r'[\\()$^.+[\]{}|]');
 final _paramPattern = r'([^/?]+)';
+final _paramWithSlashesPattern = r'([^?]+)';
 
 /**
  * A reversible URL template class that can match/parse and reverse URL
@@ -52,7 +53,7 @@ class UrlTemplate implements UrlMatcher {
         replaceAllMapped(_specialChars, (m) => r'\' + m.group(0));
     _fields = <String>[];
     _chunks = [];
-    var exp = new RegExp(r':(\w+)');
+    var exp = new RegExp(r':(\w+\*?)');
     StringBuffer sb = new StringBuffer('^');
     int start = 0;
     exp.allMatches(template).forEach((Match m) {
@@ -62,7 +63,11 @@ class UrlTemplate implements UrlMatcher {
       _chunks.add(txt);
       _chunks.add((Map params) => params != null ? params[paramName] : null);
       sb.write(txt);
-      sb.write(_paramPattern);
+      if (paramName.endsWith(r'*')) {
+        sb.write(_paramWithSlashesPattern);
+      } else {
+        sb.write(_paramPattern);
+      }
       start = m.end;
     });
     if (start != template.length) {
