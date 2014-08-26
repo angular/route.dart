@@ -255,7 +255,7 @@ class RouteImpl extends Route {
   String _getHead(String tail, Map queryParams) {
     if (parent == null) return tail;
     if (parent._currentRoute == null) {
-      throw new StateError('Router $parent has no current router.');
+      throw new StateError('Route $parent has no current route.');
     }
     _populateQueryParams(parent._currentRoute._lastEvent.parameters,
         parent._currentRoute, queryParams);
@@ -326,7 +326,7 @@ class RouteImpl extends Route {
   @override
   Map get parameters {
     if (isActive) {
-      return _lastEvent == null ? {} : new Map.from(_lastEvent.parameters);
+      return _lastEvent == null ? const {} : new Map.from(_lastEvent.parameters);
     }
     return null;
   }
@@ -444,9 +444,13 @@ class Router {
             : useFragment,
         _window = (windowImpl == null) ? window : windowImpl,
         root = new RouteImpl._new() {
-    var lm = linkMatcher == null ? new DefaultRouterLinkMatcher() : linkMatcher;
-    _clickHandler = clickHandler == null ?
-        new DefaultWindowClickHandler(lm, this, _useFragment, _window, _normalizeHash) : clickHandler;
+    if (clickHandler == null) {
+      if (linkMatcher == null) linkMatcher = new DefaultRouterLinkMatcher();
+      _clickHandler = new DefaultWindowClickHandler(linkMatcher, this,
+          _useFragment, _window, _normalizeHash);
+    } else {
+      _clickHandler = clickHandler;
+    }
   }
 
   /**
@@ -469,9 +473,16 @@ class Router {
   }
 
   Future<bool> _route(String path, Route startingFrom) {
-    var baseRoute = startingFrom == null ? root : _dehandle(startingFrom);
-    var trimmedActivePath = startingFrom != null ?
-        activePath.skip(activePath.indexOf(baseRoute) + 1).toList() : activePath;
+    var baseRoute;
+    var trimmedActivePath;
+    if (startingFrom == null) {
+      baseRoute = root;
+      trimmedActivePath = activePath;
+    } else {
+      baseRoute = _dehandle(startingFrom);
+      trimmedActivePath = activePath.sublist(activePath.indexOf(baseRoute) + 1);
+    }
+
     var treePath = _matchingTreePath(path, baseRoute);
     var mustLeave = trimmedActivePath;
     var leaveBase = baseRoute;

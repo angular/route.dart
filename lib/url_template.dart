@@ -12,7 +12,6 @@ final _paramPattern = r'([^/?]+)';
 class UrlTemplate implements UrlMatcher {
   List<String> _fields;
   RegExp _pattern;
-  String _strPattern;
   List _chunks;
 
   String toString() => 'UrlTemplate($_pattern)';
@@ -20,8 +19,8 @@ class UrlTemplate implements UrlMatcher {
   int compareTo(UrlMatcher other) {
     final String tmpParamPattern = '\t';
     if (other is UrlTemplate) {
-      String thisPattern = _strPattern.replaceAll(_paramPattern, tmpParamPattern);
-      String otherPattern = other._strPattern.replaceAll(_paramPattern, tmpParamPattern);
+      String thisPattern = _pattern.pattern.replaceAll(_paramPattern, tmpParamPattern);
+      String otherPattern = other._pattern.pattern.replaceAll(_paramPattern, tmpParamPattern);
       List<String> thisPatternParts = thisPattern.split('/');
       List<String> otherPatternParts = otherPattern.split('/');
       if (thisPatternParts.length == otherPatternParts.length) {
@@ -48,15 +47,15 @@ class UrlTemplate implements UrlMatcher {
   }
 
   void _compileTemplate(String template) {
-    template = template.
-        replaceAllMapped(_specialChars, (m) => r'\' + m.group(0));
+    // Escape special characters
+    template = template.replaceAllMapped(_specialChars, (m) => r'\' + m[0]);
     _fields = <String>[];
     _chunks = [];
     var exp = new RegExp(r':(\w+)');
     StringBuffer sb = new StringBuffer('^');
     int start = 0;
     exp.allMatches(template).forEach((Match m) {
-      var paramName = m.group(1);
+      var paramName = m[1];
       var txt = template.substring(start, m.start);
       _fields.add(paramName);
       _chunks.add(txt);
@@ -70,20 +69,18 @@ class UrlTemplate implements UrlMatcher {
       sb.write(txt);
       _chunks.add(txt);
     }
-    _strPattern = sb.toString();
-    _pattern = new RegExp(_strPattern);
+    _pattern = new RegExp(sb.toString());
   }
 
   UrlMatch match(String url) {
-    var matches = _pattern.allMatches(url);
-    if (matches.isEmpty) return null;
+    Match match = _pattern.firstMatch(url);
+    if (match == null) return null;
     var parameters = new Map();
-    Match match = matches.first;
     for (var i = 0; i < match.groupCount; i++) {
-      parameters[_fields[i]] = match.group(i + 1);
+      parameters[_fields[i]] = match[i + 1];
     }
-    var tail = url.substring(match.group(0).length);
-    return new UrlMatch(match.group(0), tail, parameters);
+    var tail = url.substring(match[0].length);
+    return new UrlMatch(match[0], tail, parameters);
   }
 
   String reverse({Map parameters, String tail: ''}) =>
