@@ -59,7 +59,7 @@ class UrlTemplate implements UrlMatcher {
       var txt = template.substring(start, m.start);
       _fields.add(paramName);
       _chunks.add(txt);
-      _chunks.add((Map params) => params != null ? params[paramName] : null);
+      _chunks.add((Map params) => params[paramName]);
       sb.write(txt);
       sb.write(_paramPattern);
       start = m.end;
@@ -83,8 +83,10 @@ class UrlTemplate implements UrlMatcher {
     return new UrlMatch(match[0], tail, parameters);
   }
 
-  String reverse({Map parameters, String tail: ''}) =>
-    _chunks.map((c) => c is Function ? c(parameters) : c).join() + tail;
+  String reverse({Map parameters, String tail: ''}) {
+    if (parameters == null) parameters = const {};
+    return _chunks.map((c) => c is Function ? c(parameters) : c).join() + tail;
+  }
 
   List<String> get urlParameterNames => _fields;
 }
