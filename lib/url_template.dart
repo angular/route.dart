@@ -10,8 +10,22 @@ final _paramPattern = r'([^/?]+)';
  * templates like: /foo/:bar/baz
  */
 class UrlTemplate implements UrlMatcher {
+  // Parameter names of the template ie  `['bar']` for `/foo/:bar/baz`
   List<String> _fields;
+
+  // The compiled template
   RegExp _pattern;
+
+  /**
+   * The template exploded as parts
+   * - even indexes contain text
+   * - odd indexes contain closures that return the parameter value
+   *
+   * `/foo/:bar/baz` produces:
+   * - [0] = `/foo/`
+   * - [1] = `(p) => p['bar']`
+   * - [2] = `/baz`
+   */
   List _chunks;
 
   String toString() => 'UrlTemplate($_pattern)';

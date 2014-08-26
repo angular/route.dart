@@ -160,12 +160,18 @@ class RouteImpl extends Route {
   @override
   final RouteImpl parent;
 
+  /// Child routes map route names to `Route` instances
   final _routes = <String, RouteImpl>{};
+
   final StreamController<RouteEnterEvent> _onEnterController;
   final StreamController<RoutePreEnterEvent> _onPreEnterController;
   final StreamController<RoutePreLeaveEvent> _onPreLeaveController;
   final StreamController<RouteLeaveEvent> _onLeaveController;
+
+  /// The default child route
   RouteImpl _defaultRoute;
+
+  /// The currently active child route
   RouteImpl _currentRoute;
   RouteEvent _lastEvent;
   @override
@@ -280,6 +286,8 @@ class RouteImpl extends Route {
     return tail;
   }
 
+  /// Populates the [queryParams] map from the [parameters] which name start with
+  /// the route name and are not route parameters.
   void _populateQueryParams(Map parameters, Route route, Map queryParams) {
     parameters.keys.forEach((String prefixedKey) {
       if (prefixedKey.startsWith('${route.name}.')) {
@@ -353,9 +361,8 @@ class RoutePreEnterEvent extends RouteEvent {
       : this(m.urlMatch.tail, m.urlMatch.parameters, m.route);
 
   /**
-   * Can be called on enter with the future which will complete with a boolean
-   * value allowing (true) or disallowing (false) the current
-   * navigation.
+   * Can be called with a future which will complete with a boolean
+   * value allowing (true) or disallowing (false) the current navigation.
    */
   void allowEnter(Future<bool> allow) {
     _allowEnterFutures.add(allow);
@@ -379,9 +386,8 @@ class RoutePreLeaveEvent extends RouteEvent {
   RoutePreLeaveEvent(path, parameters, route)  : super(path, parameters, route);
 
   /**
-   * Can be called with the future which will complete with a boolean
-   * value allowing (true) or disallowing (false) the current
-   * navigation.
+   * Can be called with a future which will complete with a boolean
+   * value allowing (true) or disallowing (false) the current navigation.
    */
   void allowLeave(Future<bool> allow) {
     _allowLeaveFutures.add(allow);
@@ -485,6 +491,7 @@ class Router {
     }
 
     var treePath = _matchingTreePath(path, baseRoute);
+    // Figure out the list of routes that will be leaved
     var mustLeave = trimmedActivePath;
     var leaveBase = baseRoute;
     for (var i = 0, ll = min(trimmedActivePath.length, treePath.length); i < ll; i++) {
@@ -500,6 +507,14 @@ class Router {
     return _preLeave(path, mustLeave, treePath, leaveBase, trimmedActivePath, baseRoute);
   }
 
+  /**
+   * Called before leaving the current route.
+   *
+   * If none of the preLeave listeners veto the leave, chain call [_preEnter].
+   *
+   * If at least one preLeave listeners veto the leave, returns a Future that will resolve to
+   * false. The current route will not change.
+   */
   Future<bool> _preLeave(String path, Iterable<Route> mustLeave,
       List<_Match> treePath, Route leaveBase, List<RouteImpl> activePath,
       RouteImpl baseRoute) {
@@ -596,6 +611,7 @@ class Router {
         (routes..sort((r1, r2) => r1.path.compareTo(r2.path))) : routes;
   }
 
+  /// Returns the path as a list of [_Match]
   List<_Match> _matchingTreePath(String path, RouteImpl baseRoute) {
     final treePath = <_Match>[];
     Route matchedRoute;
@@ -654,6 +670,7 @@ class Router {
         _buildQuery(queryParams);
   }
 
+  /// Build an query string from a parameter `Map`
   String _buildQuery(Map queryParams) {
     if (queryParams.isEmpty) return '';
     return '?' + queryParams.keys
@@ -671,7 +688,7 @@ class Router {
     return match;
   }
 
-  /// Parse the query string to a parameter map
+  /// Parse the query string to a parameter `Map`
   Map<String, String> _parseQuery(Route route, String path) {
     var params = {};
     if (path.indexOf('?') == -1) return params;
