@@ -268,20 +268,16 @@ class RouteImpl extends Route {
   }
 
   String _getTailUrl(String routePath, Map parameters, Map queryParams) {
-    var routeName = routePath.split('.').first;
-    if (!_routes.containsKey(routeName)) {
-      throw new StateError('Invalid route name: $routeName');
-    }
-    var routeToGo = _routes[routeName];
     var tail = '';
-    var childPath = routePath.substring(routeName.length);
-    if (childPath.isNotEmpty) {
-      tail = routeToGo._getTailUrl(
-          childPath.substring(1), parameters, queryParams);
-    }
+    var routeToGo = findRoute(routePath);
+    if (routeToGo == null) throw new StateError('Invalid route path: $routePath');
     _populateQueryParams(parameters, routeToGo, queryParams);
-    return routeToGo.path.reverse(
-        parameters: _joinParams(parameters, routeToGo._lastEvent), tail: tail);
+    for (RouteImpl route = routeToGo; route != this; route = route.parent) {
+      tail = route.path.reverse(
+          parameters: _joinParams(parameters, route._lastEvent),
+          tail: tail);
+    }
+    return tail;
   }
 
   void _populateQueryParams(Map parameters, Route route, Map queryParams) {
