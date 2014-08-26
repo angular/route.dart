@@ -241,15 +241,17 @@ class RouteImpl extends Route {
 
   @override
   Route findRoute(String routePath) {
-    var routeName = routePath.split(_PATH_SEPARATOR).first;
-    if (!_routes.containsKey(routeName)) {
-      _logger.warning('Invalid route name: $routeName $_routes');
-      return null;
-    }
-    var routeToGo = _routes[routeName];
-    var childPath = routePath.substring(routeName.length);
-    return childPath.isEmpty ? routeToGo :
-        routeToGo.getRoute(childPath.substring(1));
+    RouteImpl currentRoute = this;
+    List<String> subRouteNames = routePath.split(_PATH_SEPARATOR);
+    do {
+      var routeName = subRouteNames.removeAt(0);
+      currentRoute = currentRoute._routes[routeName];
+      if (currentRoute == null) {
+        _logger.warning('Invalid route name: $routeName $_routes');
+        return null;
+      }
+    } while (subRouteNames.isNotEmpty);
+    return currentRoute;
   }
 
   String _getHead(String tail, Map queryParams) {
