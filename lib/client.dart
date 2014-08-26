@@ -502,7 +502,7 @@ class Router {
     });
     return Future.wait(preLeaving).then((List<bool> results) {
       if (!results.any((r) => r == false)) {
-        var leaveFn = ()  =>_leave(mustLeave, leaveBase);
+        var leaveFn = () => _leave(mustLeave, leaveBase);
 
         return _preEnter(path, treePath, activePath, baseRoute, leaveFn);
       }
@@ -563,7 +563,7 @@ class Router {
     });
   }
 
-  _enter(RouteImpl startingFrom, Iterable<_Match> treePath, String path) {
+  void _enter(RouteImpl startingFrom, Iterable<_Match> treePath, String path) {
     var base = startingFrom;
     treePath.forEach((_Match matchedRoute) {
       var event = new RouteEnterEvent._fromMatch(matchedRoute);
@@ -574,9 +574,10 @@ class Router {
     });
   }
 
-  List _matchingRoutes(String path, RouteImpl baseRoute) {
+  /// Returns the direct child routes of [baseRoute] matching the given [path]
+  List<RouteImpl> _matchingRoutes(String path, RouteImpl baseRoute) {
     var routes = baseRoute._routes.values
-        .where((r) => r.path.match(path) != null)
+        .where((RouteImpl r) => r.path.match(path) != null)
         .toList();
 
     return sortRoutes ?
@@ -611,15 +612,16 @@ class Router {
 
   bool _paramsChanged(RouteImpl route, UrlMatch match) {
     var lastEvent = route._lastEvent;
-    return lastEvent == null || lastEvent.path != match.match ||
-        !mapsShallowEqual(lastEvent.parameters, match.parameters);
+    return lastEvent == null ||
+           lastEvent.path != match.match ||
+           !mapsShallowEqual(lastEvent.parameters, match.parameters);
   }
 
   /// Navigates to a given relative route path, and parameters.
   Future go(String routePath, Map parameters,
             {Route startingFrom, bool replace: false}) {
     var queryParams = {};
-    var baseRoute = startingFrom == null ? this.root : _dehandle(startingFrom);
+    var baseRoute = startingFrom == null ? root : _dehandle(startingFrom);
     var newTail = baseRoute._getTailUrl(routePath, parameters, queryParams) +
         _buildQuery(queryParams);
     String newUrl = baseRoute._getHead(newTail, queryParams);
@@ -632,7 +634,7 @@ class Router {
 
   /// Returns an absolute URL for a given relative route path and parameters.
   String url(String routePath, {Route startingFrom, Map parameters}) {
-    var baseRoute = startingFrom == null ? this.root : _dehandle(startingFrom);
+    var baseRoute = startingFrom == null ? root : _dehandle(startingFrom);
     parameters = parameters == null ? {} : parameters;
     var queryParams = {};
     var tail = baseRoute._getTailUrl(routePath, parameters, queryParams);
@@ -642,9 +644,9 @@ class Router {
 
   String _buildQuery(Map queryParams) {
     if (queryParams.isEmpty) return '';
-    var query = queryParams.keys.map((key) =>
-        '$key=${Uri.encodeComponent(queryParams[key])}').join('&');
-    return '?$query';
+    return '?' + queryParams.keys
+        .map((key) => '$key=${Uri.encodeComponent(queryParams[key])}')
+        .join('&');
   }
 
   Route _dehandle(Route r) => r is RouteHandle ? r._getHost(r): r;
@@ -657,7 +659,8 @@ class Router {
     return match;
   }
 
-  Map _parseQuery(Route route, String path) {
+  /// Parse the query string to a parameter map
+  Map<String, String> _parseQuery(Route route, String path) {
     var params = {};
     if (path.indexOf('?') == -1) return params;
     var queryStr = path.substring(path.indexOf('?') + 1);
@@ -671,15 +674,16 @@ class Router {
     return params;
   }
 
-  List<String> _parseKeyVal(kvPair) {
+  /// Parse a key value pair (`"key=value"`) and returns a `["key", "value"]` `List`
+  List<String> _parseKeyVal(String kvPair) {
     if (kvPair.isEmpty) {
       return const ['', ''];
     }
     var splitPoint = kvPair.indexOf('=');
 
     return (splitPoint == -1) ?
-        [kvPair, '']
-        : [kvPair.substring(0, splitPoint), kvPair.substring(splitPoint + 1)];
+        [kvPair, ''] :
+        [kvPair.substring(0, splitPoint), kvPair.substring(splitPoint + 1)];
   }
 
   /**
@@ -781,5 +785,5 @@ class _Match {
 
   _Match(this.route, this.urlMatch);
 
-  toString() => route.toString();
+  String toString() => route.toString();
 }
