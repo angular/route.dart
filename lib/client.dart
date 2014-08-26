@@ -255,13 +255,16 @@ class RouteImpl extends Route {
   }
 
   String _getHead(String tail, Map queryParams) {
-    if (parent == null) return tail;
-    if (parent._currentRoute == null) {
-      throw new StateError('Route $parent has no current route.');
+    for (RouteImpl route = this; route.parent != null; route = route.parent) {
+      var currentRoute = route.parent._currentRoute;
+      if (currentRoute == null) {
+        throw new StateError('Route ${route.parent.name} has no current route.');
+      }
+      _populateQueryParams(currentRoute._lastEvent.parameters, currentRoute, queryParams);
+
+      tail = currentRoute._reverse(tail);
     }
-    _populateQueryParams(parent._currentRoute._lastEvent.parameters,
-        parent._currentRoute, queryParams);
-    return parent._getHead(parent._currentRoute._reverse(tail), queryParams);
+    return tail;
   }
 
   String _getTailUrl(String routePath, Map parameters, Map queryParams) {
