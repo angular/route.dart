@@ -605,35 +605,43 @@ class Router {
     });
   }
 
-  /// Returns the direct child routes of [baseRoute] matching the given [path]
-  List<RouteImpl> _matchingRoutes(String path, RouteImpl baseRoute) {
-    var routes = baseRoute._routes.values
-        .where((RouteImpl r) => r.path.match(path) != null)
-        .toList();
-
-    return sortRoutes ?
-        (routes..sort((r1, r2) => r1.path.compareTo(r2.path))) : routes;
-  }
-
   /// Returns the path as a list of [_Match]
   List<_Match> _matchingTreePath(String path, RouteImpl baseRoute) {
     final treePath = <_Match>[];
+    final Map matches = <RouteImpl, UrlMatch>{};
+    List matchingRoutes = <RouteImpl>[];
+
     Route matchedRoute;
+    UrlMatch match;
     do {
       matchedRoute = null;
-      List matchingRoutes = _matchingRoutes(path, baseRoute);
+      matchingRoutes.clear();
+      matches.clear();
+      baseRoute._routes.values.forEach((RouteImpl route) {
+        var urlMatch = route.path.match(path);
+        if (urlMatch != null) {
+          matchingRoutes.add(route);
+          matches[route] = urlMatch;
+        }
+      });
+
       if (matchingRoutes.isNotEmpty) {
         if (matchingRoutes.length > 1) {
+          if (sortRoutes) {
+            matchingRoutes = matchingRoutes..sort((r1, r2) => r1.path.compareTo(r2.path));
+          }
           _logger.warning("More than one route matches $path $matchingRoutes");
         }
         matchedRoute = matchingRoutes.first;
+        match = matches[matchedRoute];
+        match.parameters.addAll(_parseQuery(matchedRoute, path));
       } else {
         if (baseRoute._defaultRoute != null) {
           matchedRoute = baseRoute._defaultRoute;
+          match = new UrlMatch('', '', {});
         }
       }
       if (matchedRoute != null) {
-        var match = _getMatch(matchedRoute, path);
         treePath.add(new _Match(matchedRoute, match));
         baseRoute = matchedRoute;
         path = match.tail;
@@ -687,14 +695,6 @@ class Router {
   }
 
   Route _dehandle(Route r) => r is RouteHandle ? r._getHost(r): r;
-
-  UrlMatch _getMatch(Route route, String path) {
-    var match = route.path.match(path);
-    // default route
-    if (match == null) return new UrlMatch('', '', {});
-    match.parameters.addAll(_parseQuery(route, path));
-    return match;
-  }
 
   /// Parse the query string to a parameter `Map`
   Map<String, String> _parseQuery(Route route, String path) {
