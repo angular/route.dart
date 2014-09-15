@@ -91,5 +91,25 @@ main() {
         'c': 'baz',
       }), '/foo/bar/baz/tail');
     });
+
+    test('should conditionally allow slashes in parameters', () {
+      var tmpl = new UrlTemplate('/foo/:bar');
+            expect(tmpl.match('/foo/123/456'),
+                new UrlMatch('/foo/123', '/456', {
+                  'bar': '123'
+                }));
+
+      tmpl = new UrlTemplate('/foo/:bar*');
+      expect(tmpl.match('/foo/123/456'),
+          new UrlMatch('/foo/123/456', '', {
+            'bar*': '123/456'
+          }));
+
+      tmpl = new UrlTemplate('/foo/:bar*/baz');
+      expect(tmpl.match('/foo/123/456/baz'),
+          new UrlMatch('/foo/123/456/baz', '', {
+            'bar*': '123/456'
+          }));
+    });
   });
 }
