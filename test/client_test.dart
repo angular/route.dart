@@ -238,7 +238,6 @@ main() {
   });
 
   group('leave', () {
-
     test('should leave previous route and enter new', () {
       var counters = <String, int>{
         'fooPreEnter': 0,
@@ -290,7 +289,6 @@ main() {
         'bazEnter': 0,
         'bazLeave': 0
       });
-
       router.route('/foo/bar').then(expectAsync((_) {
         expect(counters, {
           'fooPreEnter': 1,
@@ -306,7 +304,7 @@ main() {
           'bazEnter': 0,
           'bazLeave': 0
         });
-
+      })).then(expectAsync((_) =>
         router.route('/foo/baz').then(expectAsync((_) {
           expect(counters, {
             'fooPreEnter': 1,
@@ -322,8 +320,42 @@ main() {
             'bazEnter': 1,
             'bazLeave': 0
           });
-        }));
-      }));
+        }))
+      )).then(expectAsync((_) =>
+        router.route('/foo/baz').then(expectAsync((_) {
+          expect(counters, {
+            'fooPreEnter': 1,
+            'fooPreLeave': 0,
+            'fooEnter': 1,
+            'fooLeave': 0,
+            'barPreEnter': 1,
+            'barPreLeave': 1,
+            'barEnter': 1,
+            'barLeave': 1,
+            'bazPreEnter': 1,
+            'bazPreLeave': 0,
+            'bazEnter': 1,
+            'bazLeave': 0
+          });
+        }))
+      )).then(expectAsync((_) =>
+        router.route('/foo/baz', reloadFromBase: true).then(expectAsync((_) {
+          expect(counters, {
+            'fooPreEnter': 2,
+            'fooPreLeave': 1,
+            'fooEnter': 2,
+            'fooLeave': 1,
+            'barPreEnter': 1,
+            'barPreLeave': 1,
+            'barEnter': 1,
+            'barLeave': 1,
+            'bazPreEnter': 2,
+            'bazPreLeave': 1,
+            'bazEnter': 2,
+            'bazLeave': 1
+          });
+        }))
+      ));
     });
 
     test('should leave starting from child to parent', () {
