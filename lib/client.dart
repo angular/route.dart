@@ -798,7 +798,7 @@ class Router {
       }
     } else {
       if (title == null) {
-        title = _window.document.title;
+        title = (_window.document as HtmlDocument).title;
       }
       if (replace) {
         _window.history.replaceState(null, title, path);

@@ -1,4 +1,4 @@
-library route.link_matcher_test;
+library route.click_handler_test;
 
 import 'dart:html';
 import 'dart:async';
