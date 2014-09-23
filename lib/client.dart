@@ -49,6 +49,11 @@ abstract class Route {
   Route get parent;
 
   /**
+   * Used to set page title when the route [isActive].
+   */
+  String get title;
+
+  /**
    * Indicates whether this route is currently active. Root route is always
    * active.
    */
@@ -115,7 +120,7 @@ abstract class Route {
   void addRoute({String name, Pattern path, bool defaultRoute: false,
         RouteEnterEventHandler enter, RoutePreEnterEventHandler preEnter,
         RoutePreLeaveEventHandler preLeave, RouteLeaveEventHandler leave,
-        mount, dontLeaveOnParamChanges: false});
+        mount, dontLeaveOnParamChanges: false, String title});
 
   /**
    * Queries sub-routes using the [routePath] and returns the matching [Route].
@@ -159,6 +164,8 @@ class RouteImpl extends Route {
   final UrlMatcher path;
   @override
   final RouteImpl parent;
+  @override
+  final String title;
 
   /// Child routes map route names to `Route` instances
   final _routes = <String, RouteImpl>{};
@@ -189,7 +196,7 @@ class RouteImpl extends Route {
   @override
   Stream<RouteEvent> get onEnter => _onEnterController.stream;
 
-  RouteImpl._new({this.name, this.path, this.parent,
+  RouteImpl._new({this.name, this.path, this.parent, this.title,
                  this.dontLeaveOnParamChanges: false})
       : _onEnterController =
             new StreamController<RouteEnterEvent>.broadcast(sync: true),
@@ -204,7 +211,7 @@ class RouteImpl extends Route {
   void addRoute({String name, Pattern path, bool defaultRoute: false,
       RouteEnterEventHandler enter, RoutePreEnterEventHandler preEnter,
       RoutePreLeaveEventHandler preLeave, RouteLeaveEventHandler leave,
-      mount, dontLeaveOnParamChanges: false}) {
+      mount, dontLeaveOnParamChanges: false, String title}) {
     if (name == null) {
       throw new ArgumentError('name is required for all routes');
     }
@@ -218,7 +225,7 @@ class RouteImpl extends Route {
     var matcher = path is UrlMatcher ? path : new UrlTemplate(path.toString());
 
     var route = new RouteImpl._new(name: name, path: matcher, parent: this,
-        dontLeaveOnParamChanges: dontLeaveOnParamChanges);
+        dontLeaveOnParamChanges: dontLeaveOnParamChanges, title: title);
 
     route..onPreEnter.listen(preEnter)
          ..onPreLeave.listen(preLeave)
@@ -273,12 +280,8 @@ class RouteImpl extends Route {
     return tail;
   }
 
-  String _getTailUrl(String routePath, Map parameters, Map queryParams) {
+  String _getTailUrl(Route routeToGo, Map parameters, Map queryParams) {
     var tail = '';
-    var routeToGo = findRoute(routePath);
-    if (routeToGo == null) {
-      throw new StateError('Invalid route path: $routePath');
-    }
     _populateQueryParams(parameters, routeToGo, queryParams);
     for (RouteImpl route = routeToGo; route != this; route = route.parent) {
       tail = route.path.reverse(
@@ -654,13 +657,14 @@ class Router {
             {Route startingFrom, bool replace: false}) {
     var queryParams = {};
     var baseRoute = startingFrom == null ? root : _dehandle(startingFrom);
-    var newTail = baseRoute._getTailUrl(routePath, parameters, queryParams) +
+    var routeToGo = _findRoute(baseRoute, routePath);
+    var newTail = baseRoute._getTailUrl(routeToGo, parameters, queryParams) +
         _buildQuery(queryParams);
     String newUrl = baseRoute._getHead(newTail, queryParams);
     _logger.finest('go $newUrl');
     return route(newTail, startingFrom: baseRoute).then((success) {
       if (success) {
-        _go(newUrl, null, replace);
+        _go(newUrl, routeToGo.title, replace);
       }
       return success;
     });
@@ -671,9 +675,20 @@ class Router {
     var baseRoute = startingFrom == null ? root : _dehandle(startingFrom);
     parameters = parameters == null ? {} : parameters;
     var queryParams = {};
-    var tail = baseRoute._getTailUrl(routePath, parameters, queryParams);
+    var routeToGo = _findRoute(baseRoute, routePath);
+    var tail = baseRoute._getTailUrl(routeToGo, parameters, queryParams);
     return (_useFragment ? '#' : '') + baseRoute._getHead(tail, queryParams) +
         _buildQuery(queryParams);
+  }
+
+  /// Attempts to find [Route] for the specified [routePath] relative to the
+  /// [baseRoute]. If nothing is found throws a [StateError].
+  Route _findRoute(Route baseRoute, String routePath) {
+    var route = baseRoute.findRoute(routePath);
+    if (route == null) {
+      throw new StateError('Invalid route path: $routePath');
+    }
+    return route;
   }
 
   /// Build an query string from a parameter `Map`
@@ -793,9 +808,6 @@ class Router {
       } else {
         _window.location.assign('#$path');
       }
-      if (title != null) {
-        (_window.document as HtmlDocument).title = title;
-      }
     } else {
       if (title == null) {
         title = (_window.document as HtmlDocument).title;
@@ -805,6 +817,9 @@ class Router {
       } else {
         _window.history.pushState(null, title, path);
       }
+    }
+    if (title != null) {
+      (_window.document as HtmlDocument).title = title;
     }
   }
 

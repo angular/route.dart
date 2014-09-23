@@ -947,6 +947,32 @@ main() {
       });
     });
 
+    test('should update page title if the title property is set', () {
+      var mockWindow = new MockWindow();
+      var router = new Router(useFragment: false, windowImpl: mockWindow);
+      router.root.addRoute(name: 'foo', path: '/foo', title: 'Foo');
+
+      router.go('foo', {}).then(expectAsync((_) {
+        var mockHistory = mockWindow.history;
+        mockWindow.document.getLogs(callsTo('set title')).verify(happenedOnce);
+        expect(mockHistory.getLogs(callsTo('pushState', anything)).last.args,
+            [null, 'Foo', '/foo']);
+      }));
+    });
+
+    test('should not change page title if the title property is not set', () {
+      var mockWindow = new MockWindow();
+      mockWindow.document.when(callsTo('get title')).alwaysReturn('page title');
+      var router = new Router(useFragment: false, windowImpl: mockWindow);
+      router.root.addRoute(name: 'foo', path: '/foo');
+
+      router.go('foo', {}).then(expectAsync((_) {
+        var mockHistory = mockWindow.history;
+        expect(mockHistory.getLogs(callsTo('pushState', anything)).last.args,
+            [null, 'page title', '/foo']);
+      }));
+    });
+
   });
 
   group('url', () {
