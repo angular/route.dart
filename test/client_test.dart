@@ -950,7 +950,7 @@ main() {
     test('should update page title if the title property is set', () {
       var mockWindow = new MockWindow();
       var router = new Router(useFragment: false, windowImpl: mockWindow);
-      router.root.addRoute(name: 'foo', path: '/foo', title: 'Foo');
+      router.root.addRoute(name: 'foo', path: '/foo', pageTitle: 'Foo');
 
       router.go('foo', {}).then(expectAsync((_) {
         var mockHistory = mockWindow.history;
