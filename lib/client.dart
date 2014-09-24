@@ -471,19 +471,18 @@ class Router {
 
   /**
    * Finds a matching [Route] added with [addRoute], parses the path
-   * and invokes the associated callback.
+   * and invokes the associated callback. Search for the matching route starts
+   * at [startingFrom] route or the root [Route] if not specified. By default
+   * the common path from [startingFrom] to the current active path and target
+   * path will be ignored (i.e. no leave or enter will be executed on them). Set
+   * [reloadFromBase] to true for a full reload from the [startingFrom] route.
    *
    * This method does not perform any navigation, [go] should be used for that.
    * This method is used to invoke a handler after some other code navigates the
    * window, such as [listen].
    */
-  Future<bool> route(String path, {Route startingFrom}) {
-    var future = _route(path, startingFrom);
-    _onRouteStart.add(new RouteStartEvent._new(path, future));
-    return future;
-  }
-
-  Future<bool> _route(String path, Route startingFrom) {
+  Future<bool> route(String path,
+      {Route startingFrom, bool reloadFromBase: false}) {
     var baseRoute;
     var trimmedActivePath;
     if (startingFrom == null) {
@@ -497,18 +496,9 @@ class Router {
     var treePath = _matchingTreePath(path, baseRoute);
     // Figure out the list of routes that will be leaved
     var mustLeave = trimmedActivePath;
-    var leaveBase = baseRoute;
-    for (var i = 0, ll = min(trimmedActivePath.length, treePath.length); i < ll; i++) {
-      if (mustLeave.first == treePath[i].route &&
-          (treePath[i].route.dontLeaveOnParamChanges ||
-              !_paramsChanged(treePath[i].route, treePath[i].urlMatch))) {
-        mustLeave = mustLeave.skip(1);
-        leaveBase = leaveBase._currentRoute;
-      } else {
-        break;
-      }
-    }
-    return _preLeave(path, mustLeave, treePath, leaveBase, trimmedActivePath, baseRoute);
+    var future = _preLeave(path, treePath, trimmedActivePath, baseRoute, reloadFromBase);
+    _onRouteStart.add(new RouteStartEvent._new(path, future));
+    return future;
   }
 
   /**
@@ -519,9 +509,22 @@ class Router {
    * If at least one preLeave listeners veto the leave, returns a Future that will resolve to
    * false. The current route will not change.
    */
-  Future<bool> _preLeave(String path, Iterable<Route> mustLeave,
-      List<_Match> treePath, Route leaveBase, List<RouteImpl> activePath,
-      RouteImpl baseRoute) {
+  Future<bool> _preLeave(String path, List<_Match> treePath,
+      List<RouteImpl> activePath, RouteImpl baseRoute, bool reload) {
+    var mustLeave = activePath;
+    var leaveBase = baseRoute;
+    if (!reload) {
+      for (var i = 0, ll = min(activePath.length, treePath.length); i < ll; i++) {
+        if (mustLeave.first == treePath[i].route &&
+            (treePath[i].route.dontLeaveOnParamChanges ||
+                !_paramsChanged(treePath[i].route, treePath[i].urlMatch))) {
+          mustLeave = mustLeave.skip(1);
+          leaveBase = leaveBase._currentRoute;
+        } else {
+          break;
+        }
+      }
+    }
     // Reverse the list to ensure child is left before the parent.
     mustLeave = mustLeave.toList().reversed;
 
@@ -535,7 +538,7 @@ class Router {
       if (!results.any((r) => r == false)) {
         var leaveFn = () => _leave(mustLeave, leaveBase);
 
-        return _preEnter(path, treePath, activePath, baseRoute, leaveFn);
+        return _preEnter(path, treePath, activePath, baseRoute, reload, leaveFn);
       }
       return new Future.value(false);
     });
@@ -559,18 +562,20 @@ class Router {
   }
 
   Future<bool> _preEnter(String path, List<_Match> treePath,
-      List<Route> activePath, RouteImpl baseRoute, Function leaveFn) {
+      List<Route> activePath, RouteImpl baseRoute, bool reload, Function leaveFn) {
     var toEnter = treePath;
     var tail = path;
     var enterBase = baseRoute;
-    for (var i = 0, ll = min(toEnter.length, activePath.length); i < ll; i++) {
-      if (toEnter.first.route == activePath[i] &&
-          !_paramsChanged(activePath[i], treePath[i].urlMatch)) {
-        tail = treePath[i].urlMatch.tail;
-        toEnter = toEnter.skip(1);
-        enterBase = enterBase._currentRoute;
-      } else {
-        break;
+    if (!reload) {
+      for (var i = 0, ll = min(toEnter.length, activePath.length); i < ll; i++) {
+        if (toEnter.first.route == activePath[i] &&
+            !_paramsChanged(activePath[i], treePath[i].urlMatch)) {
+          tail = treePath[i].urlMatch.tail;
+          toEnter = toEnter.skip(1);
+          enterBase = enterBase._currentRoute;
+        } else {
+          break;
+        }
       }
     }
     if (toEnter.isEmpty) {
@@ -651,14 +656,16 @@ class Router {
 
   /// Navigates to a given relative route path, and parameters.
   Future go(String routePath, Map parameters,
-            {Route startingFrom, bool replace: false}) {
+            {Route startingFrom, bool replace: false,
+            bool reloadFromBase: false}) {
     var queryParams = {};
     var baseRoute = startingFrom == null ? root : _dehandle(startingFrom);
     var newTail = baseRoute._getTailUrl(routePath, parameters, queryParams) +
         _buildQuery(queryParams);
     String newUrl = baseRoute._getHead(newTail, queryParams);
     _logger.finest('go $newUrl');
-    return route(newTail, startingFrom: baseRoute).then((success) {
+    return route(newTail, startingFrom: baseRoute,
+        reloadFromBase: reloadFromBase).then((success) {
       if (success) {
         _go(newUrl, null, replace);
       }

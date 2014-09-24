@@ -1,3 +1,10 @@
+# v0.5.1
+
+## Features
+
+- `Router.route` now supports reloading from the base route via the optional `reloadFromBase` parameter. 
+
+
 # v0.5.0
 
 ## Breaking changes
