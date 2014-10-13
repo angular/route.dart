@@ -800,11 +800,20 @@ class Router {
       if (title == null) {
         title = _window.document.title;
       }
-      if (replace) {
-        _window.history.replaceState(null, title, path);
+      if (History.supportsState) {
+        if (replace) {
+          _window.history.replaceState(null, title, path);
+        } else {
+          _window.history.pushState(null, title, path);
+        }
       } else {
-        _window.history.pushState(null, title, path);
+        if (replace) {
+          _window.location.replace(path);
+        } else {
+          _window.location.assign(path);
+        }
       }
+      
     }
   }
 
