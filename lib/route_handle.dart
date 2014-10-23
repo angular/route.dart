@@ -68,7 +68,7 @@ class RouteHandle implements Route {
   void addRoute({String name, Pattern path, bool defaultRoute: false,
       RouteEnterEventHandler enter, RoutePreEnterEventHandler preEnter,
       RoutePreLeaveEventHandler preLeave,RouteLeaveEventHandler leave,
-      mount, dontLeaveOnParamChanges: false}) {
+      mount, dontLeaveOnParamChanges: false, String pageTitle}) {
     throw new UnsupportedError('addRoute is not supported in handle');
   }
 
@@ -132,4 +132,8 @@ class RouteHandle implements Route {
   /// See [Route.dontLeaveOnParamChanges]
   @override
   bool get dontLeaveOnParamChanges => _route.dontLeaveOnParamChanges;
+
+  /// See [Route.pageTitle]
+  @override
+  String get pageTitle => _route.pageTitle;
 }
