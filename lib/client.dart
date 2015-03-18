@@ -810,7 +810,7 @@ class Router {
       route(_normalizeHash(_window.location.hash));
     } else {
       String getPath() =>
-          '${_window.location.pathname}${_window.location.hash}';
+          '${_window.location.pathname}${_window.location.search}${_window.location.hash}';
 
       _window.onPopState.listen((_) {
         route(getPath()).then((allowed) {

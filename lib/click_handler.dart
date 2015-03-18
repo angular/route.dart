@@ -49,9 +49,14 @@ class DefaultWindowClickHandler {
       return;
     }
     if (anchor.host == _window.location.host) {
-      e.preventDefault();
-      _router.gotoUrl(
-          _useFragment ? _normalizer(anchor.hash) : '${anchor.pathname}');
+      if (_useFragment) {
+        e.preventDefault();
+        _router.gotoUrl(_normalizer(anchor.hash));
+      } else if (anchor.pathname != _window.location.pathname ||
+                 anchor.search != _window.location.search) {
+        e.preventDefault();
+        _router.gotoUrl('${anchor.pathname}${anchor.search}${anchor.hash}');
+      }
     }
   }
 }
