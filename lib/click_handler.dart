@@ -48,10 +48,20 @@ class DefaultWindowClickHandler {
     if (!_linkMatcher.matches(anchor)) {
       return;
     }
+
     if (anchor.host == _window.location.host) {
       e.preventDefault();
-      _router.gotoUrl(
-          _useFragment ? _normalizer(anchor.hash) : '${anchor.pathname}');
+      if (_useFragment) {
+        _router.gotoUrl(_normalizer(anchor.hash));
+      } else if (anchor.hash == '') {
+        _router.gotoUrl('${anchor.pathname}${anchor.search}');
+      } else {
+        Element el = document.querySelector(anchor.hash);
+        if (el != null) {
+          Rectangle r = el.getBoundingClientRect();
+          _window.scroll(0, r.top.floor());
+        }
+      }
     }
   }
 }

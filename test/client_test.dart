@@ -1691,12 +1691,15 @@ main() {
 
       testInit(mockWindow, [count = 1]) {
         mockWindow.location.when(callsTo('get hash')).alwaysReturn('');
-        mockWindow.location.when(callsTo('get pathname')).alwaysReturn('/foo');
+        mockWindow.location.when(callsTo('get pathname')).alwaysReturn('/hello');
+        mockWindow.location.when(callsTo('get search')).alwaysReturn('?foo=bar&baz=bat');
         var router = new Router(useFragment: false, windowImpl: mockWindow);
-        router.root.addRoute(name: 'foo', path: '/foo');
+        router.root.addRoute(name: 'hello', path: '/hello');
         router.onRouteStart.listen(expectAsync((RouteStartEvent start) {
           start.completed.then(expectAsync((_) {
-            expect(router.findRoute('foo').isActive, isTrue);
+            expect(router.findRoute('hello').isActive, isTrue);
+            expect(router.findRoute('hello').queryParameters['baz'], 'bat');
+            expect(router.findRoute('hello').queryParameters['foo'], 'bar');
           }));
         }, count: count));
         router.listen(ignoreClick: true);
