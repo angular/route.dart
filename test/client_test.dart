@@ -602,7 +602,9 @@ main() {
         });
       });
     });
+  });
 
+  group('preLeave', () {
     void _testAllowLeave(bool allowLeave) {
       var completer = new Completer<bool>();
       bool barEntered = false;
@@ -634,6 +636,217 @@ main() {
 
     test('should veto navigation', () {
       _testAllowLeave(false);
+    });
+
+    bool noLeaveEntered;
+    bool freeLeave1Entered;
+    MockWindow mockWindow;
+    StreamController<Event> hashChangeController;
+    StreamController<PopStateEvent> popStateEventController;
+    Router router;
+    int backCount;
+    int forwardCount;
+    int historyCount;
+
+    void _setUpPreleave({bool useFragment}) {
+      Completer<bool> completer = new Completer<bool>();
+      completer.complete(false);
+      noLeaveEntered = false;
+      freeLeave1Entered = false;
+      backCount = 0;
+      forwardCount = 0;
+      historyCount = 0;
+
+      mockWindow = new MockWindow();
+      hashChangeController = new StreamController<Event>.broadcast(onListen: () {},
+          onCancel:() {}, sync:true);
+
+      popStateEventController = new StreamController<PopStateEvent>.broadcast(onListen: () {},
+          onCancel:() {}, sync:true);
+
+      mockWindow.when(callsTo('get onHashChange'))
+          .alwaysReturn(hashChangeController.stream);
+
+      mockWindow.when(callsTo('get onPopState'))
+          .alwaysReturn(popStateEventController.stream);
+
+      mockWindow.history.when(callsTo('back')).alwaysCall(() {
+        backCount++;
+      });
+      mockWindow.history.when(callsTo('forward')).alwaysCall(() {
+        forwardCount++;
+      });
+
+      mockWindow.history.when(callsTo('get length')).alwaysCall(() => historyCount);
+
+      mockWindow.location.when(callsTo('get hash')).alwaysReturn('#/foo');
+      router = new Router(useFragment: true, windowImpl: mockWindow);
+      router.root
+        ..addRoute(name: 'foo', path: '/foo',
+            mount: (Route child) => child
+              ..addRoute(name: 'noLeave', path: '/noLeave',
+                  enter: (RouteEnterEvent e) => noLeaveEntered = true,
+                  preLeave: (RoutePreLeaveEvent e) => e.allowLeave(completer.future))
+              ..addRoute(name: 'freeLeave1', path: '/freeLeave1',
+                  enter: (RouteEnterEvent e) => freeLeave1Entered = true));
+      router.listen(ignoreClick: true);
+    }
+
+    void changeWindowLocation() {
+      historyCount++;
+      hashChangeController.add(new Event.eventType('KeyboardEvent', 'keyup'));
+    }
+
+    void windowBackAction() {
+      historyCount--;
+      hashChangeController.add(new Event.eventType('KeyboardEvent', 'keyup'));
+    }
+
+    void windowForwardAction() {
+      historyCount++;
+      hashChangeController.add(new Event.eventType('KeyboardEvent', 'keyup'));
+    }
+
+    test('should handle location change cancel with useFragment', () {
+      _setUpPreleave(useFragment:true);
+
+      router.route('/foo/noLeave').then(expectAsync((_) {
+        expect(backCount, 0);
+        expect(forwardCount, 0);
+        changeWindowLocation();
+        hashChangeController.stream.listen((_) {
+          expect(backCount, 1);
+        });
+      }));
+    });
+
+    test('should handle history.back cancel with useFragment', () {
+      _setUpPreleave(useFragment:true);
+
+      router.route('/foo/freeLeave1').then(expectAsync((_) {
+        expect(backCount, 0);
+        expect(forwardCount, 0);
+        changeWindowLocation();
+        hashChangeController.stream.listen((_) {
+          expect(backCount, 0);
+          expect(forwardCount, 0);
+        });
+      }));
+
+      router.route('/foo/noLeave').then(expectAsync((_) {
+        expect(backCount, 0);
+        expect(forwardCount, 0);
+        windowBackAction();
+        hashChangeController.stream.listen((_) {
+          expect(backCount, 1);
+          expect(forwardCount, 0);
+        });
+      }));
+    });
+
+    test('should handle history.forward cancel with useFragment', () {
+      _setUpPreleave(useFragment:true);
+
+      router.route('/foo/freeLeave1').then(expectAsync((_) {
+        expect(backCount, 0);
+        expect(forwardCount, 0);
+        changeWindowLocation();
+        hashChangeController.stream.listen((_) {
+          expect(backCount, 0);
+          expect(forwardCount, 0);
+        });
+      }));
+
+      router.route('/foo/freeLeave1').then(expectAsync((_) {
+         expect(backCount, 0);
+         expect(forwardCount, 0);
+         windowBackAction();
+         hashChangeController.stream.listen((_) {
+           expect(backCount, 0);
+           expect(forwardCount, 0);
+         });
+       }));
+
+      router.route('/foo/noLeave').then(expectAsync((_) {
+        expect(backCount, 0);
+        expect(forwardCount, 0);
+        windowForwardAction();
+        hashChangeController.stream.listen((_) {
+          expect(backCount, 0);
+          expect(forwardCount, 1);
+        });
+      }));
+    });
+
+    test('should handle location change cancel without useFragment', () {
+      _setUpPreleave(useFragment:false);
+
+      router.route('/foo/noLeave').then(expectAsync((_) {
+        expect(backCount, 0);
+        expect(forwardCount, 0);
+        changeWindowLocation();
+        hashChangeController.stream.listen((_) {
+          expect(backCount, 1);
+        });
+      }));
+    });
+
+    test('should handle history.back cancel without useFragment', () {
+      _setUpPreleave(useFragment:false);
+
+      router.route('/foo/freeLeave1').then(expectAsync((_) {
+        expect(backCount, 0);
+        expect(forwardCount, 0);
+        changeWindowLocation();
+        hashChangeController.stream.listen((_) {
+          expect(backCount, 0);
+          expect(forwardCount, 0);
+        });
+      }));
+
+      router.route('/foo/noLeave').then(expectAsync((_) {
+        expect(backCount, 0);
+        expect(forwardCount, 0);
+        windowBackAction();
+        hashChangeController.stream.listen((_) {
+          expect(backCount, 1);
+          expect(forwardCount, 0);
+        });
+      }));
+    });
+
+    test('should handle history.forward cancel without useFragment', () {
+      _setUpPreleave(useFragment:false);
+
+      router.route('/foo/freeLeave1').then(expectAsync((_) {
+        expect(backCount, 0);
+        expect(forwardCount, 0);
+        changeWindowLocation();
+        hashChangeController.stream.listen((_) {
+          expect(backCount, 0);
+          expect(forwardCount, 0);
+        });
+      }));
+
+      router.route('/foo/freeLeave1').then(expectAsync((_) {
+         expect(backCount, 0);
+         expect(forwardCount, 0);
+         windowBackAction();
+         hashChangeController.stream.listen((_) {
+           expect(backCount, 0);
+           expect(forwardCount, 0);
+         });
+       }));
+
+      router.route('/foo/noLeave').then(expectAsync((_) {
+        expect(backCount, 0);
+        expect(forwardCount, 0);
+        windowForwardAction();
+        hashChangeController.stream.listen((_) {
+          expect(backCount, 0);
+          expect(forwardCount, 1);
+        });
+      }));
     });
   });
 

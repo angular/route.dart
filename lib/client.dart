@@ -450,6 +450,7 @@ class Router {
   final bool sortRoutes;
   bool _listen = false;
   WindowClickHandler _clickHandler;
+  int _historyLength = 0;
 
   /**
    * [useFragment] determines whether this Router uses pure paths with
@@ -472,6 +473,9 @@ class Router {
             : useFragment,
         _window = (windowImpl == null) ? window : windowImpl,
         root = new RouteImpl._new() {
+    if (_window != null && _window.history != null) {
+      _historyLength = _window.history.length;
+    }
     if (clickHandler == null) {
       if (linkMatcher == null) {
         linkMatcher = new DefaultRouterLinkMatcher();
@@ -799,11 +803,18 @@ class Router {
     }
     _listen = true;
     if (_useFragment) {
+      int newHistoryLength = _window.history.length;
       _window.onHashChange.listen((_) {
         route(_normalizeHash(_window.location.hash)).then((allowed) {
           // if not allowed, we need to restore the browser location
           if (!allowed) {
-            _window.history.back();
+            if (newHistoryLength > _historyLength) {
+              _window.history.back();
+            } else {
+              _window.history.forward();
+            }
+          }
+          _historyLength = _window.history.length;
           }
         });
       });
@@ -811,12 +822,18 @@ class Router {
     } else {
       String getPath() =>
           '${_window.location.pathname}${_window.location.hash}';
-
+      int newHistoryLength = _window.history.length;
       _window.onPopState.listen((_) {
         route(getPath()).then((allowed) {
           // if not allowed, we need to restore the browser location
           if (!allowed) {
-            _window.history.back();
+            if (newHistoryLength > _historyLength) {
+              _window.history.back();
+            } else {
+              _window.history.forward();
+            }
+          }
+          _historyLength = _window.history.length;
           }
         });
       });
