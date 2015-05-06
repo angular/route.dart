@@ -815,7 +815,6 @@ class Router {
             }
           }
           _historyLength = _window.history.length;
-          }
         });
       });
       route(_normalizeHash(_window.location.hash));
@@ -834,7 +833,6 @@ class Router {
             }
           }
           _historyLength = _window.history.length;
-          }
         });
       });
       route(getPath());
