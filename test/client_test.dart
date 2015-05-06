@@ -9,14 +9,11 @@ import 'dart:html';
 
 import 'package:unittest/unittest.dart';
 import 'package:mock/mock.dart';
-import 'package:dart.testing/google3_html_config.dart' as g3;
 import 'package:route_hierarchical/client.dart';
-import 'package:route_hierarchical/url_pattern.dart';
 
 import 'util/mocks.dart';
 
 main() {
-  g3.useGoogle3HtmlConfiguration();
   unittestConfiguration.timeout = new Duration(seconds: 1);
 
   test('paths are routed to routes added with addRoute', () {

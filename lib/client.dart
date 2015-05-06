@@ -803,9 +803,9 @@ class Router {
     }
     _listen = true;
     if (_useFragment) {
-      int newHistoryLength = _window.history.length;
       _window.onHashChange.listen((_) {
         route(_normalizeHash(_window.location.hash)).then((allowed) {
+          int newHistoryLength = _window.history.length;
           // if not allowed, we need to restore the browser location
           if (!allowed) {
             if (newHistoryLength > _historyLength) {
@@ -821,9 +821,9 @@ class Router {
     } else {
       String getPath() =>
           '${_window.location.pathname}${_window.location.hash}';
-      int newHistoryLength = _window.history.length;
       _window.onPopState.listen((_) {
         route(getPath()).then((allowed) {
+          int newHistoryLength = _window.history.length;
           // if not allowed, we need to restore the browser location
           if (!allowed) {
             if (newHistoryLength > _historyLength) {
