@@ -9,11 +9,14 @@ import 'dart:html';
 
 import 'package:unittest/unittest.dart';
 import 'package:mock/mock.dart';
+import 'package:dart.testing/google3_html_config.dart' as g3;
 import 'package:route_hierarchical/client.dart';
+import 'package:route_hierarchical/url_pattern.dart';
 
 import 'util/mocks.dart';
 
 main() {
+  g3.useGoogle3HtmlConfiguration();
   unittestConfiguration.timeout = new Duration(seconds: 1);
 
   test('paths are routed to routes added with addRoute', () {
@@ -659,10 +662,10 @@ main() {
 
       mockWindow = new MockWindow();
       hashChangeController = new StreamController<Event>.broadcast(onListen: () {},
-          onCancel:() {}, sync:true);
+          onCancel:() {}, sync:false);
 
       popStateEventController = new StreamController<PopStateEvent>.broadcast(onListen: () {},
-          onCancel:() {}, sync:true);
+          onCancel:() {}, sync:false);
 
       mockWindow.when(callsTo('get onHashChange'))
           .alwaysReturn(hashChangeController.stream);
@@ -707,16 +710,27 @@ main() {
       hashChangeController.add(new Event.eventType('KeyboardEvent', 'keyup'));
     }
 
+    void expectBack(int count) {
+      mockWindow.history.getLogs(callsTo('back'))
+          .verify(happenedExactly(count));
+    }
+
+    void expectForward(int count) {
+      mockWindow.history.getLogs(callsTo('forward'))
+          .verify(happenedExactly(count));
+    }
+
     test('should handle location change cancel with useFragment', () {
       _setUpPreleave(useFragment:true);
 
       router.route('/foo/noLeave').then(expectAsync((_) {
-        expect(backCount, 0);
-        expect(forwardCount, 0);
+        expectBack(0);
+        expectForward(0);
         changeWindowLocation();
-        hashChangeController.stream.listen((_) {
-          expect(backCount, 1);
-        });
+
+        hashChangeController.close().then(expectAsync((_) {
+          expectBack(1);
+        }));
       }));
     });
 
@@ -724,23 +738,19 @@ main() {
       _setUpPreleave(useFragment:true);
 
       router.route('/foo/freeLeave1').then(expectAsync((_) {
-        expect(backCount, 0);
-        expect(forwardCount, 0);
+        expectBack(0);
+        expectForward(0);
         changeWindowLocation();
-        hashChangeController.stream.listen((_) {
-          expect(backCount, 0);
-          expect(forwardCount, 0);
-        });
-      }));
 
-      router.route('/foo/noLeave').then(expectAsync((_) {
-        expect(backCount, 0);
-        expect(forwardCount, 0);
-        windowBackAction();
-        hashChangeController.stream.listen((_) {
-          expect(backCount, 1);
-          expect(forwardCount, 0);
-        });
+        router.route('/foo/noLeave').then(expectAsync((_) {
+          expectBack(0);
+          expectForward(0);
+          windowBackAction();
+          hashChangeController.close().then(expectAsync((_) {
+            expectBack(0);
+            expectForward(1);
+          }));
+        }));
       }));
     });
 
@@ -748,33 +758,25 @@ main() {
       _setUpPreleave(useFragment:true);
 
       router.route('/foo/freeLeave1').then(expectAsync((_) {
-        expect(backCount, 0);
-        expect(forwardCount, 0);
+        expectBack(0);
+        expectForward(0);
         changeWindowLocation();
-        hashChangeController.stream.listen((_) {
-          expect(backCount, 0);
-          expect(forwardCount, 0);
-        });
-      }));
 
-      router.route('/foo/freeLeave1').then(expectAsync((_) {
-         expect(backCount, 0);
-         expect(forwardCount, 0);
-         windowBackAction();
-         hashChangeController.stream.listen((_) {
-           expect(backCount, 0);
-           expect(forwardCount, 0);
-         });
-       }));
+        router.route('/foo/freeLeave1').then(expectAsync((_) {
+          expectBack(0);
+          expectForward(0);
+          windowBackAction();
 
-      router.route('/foo/noLeave').then(expectAsync((_) {
-        expect(backCount, 0);
-        expect(forwardCount, 0);
-        windowForwardAction();
-        hashChangeController.stream.listen((_) {
-          expect(backCount, 0);
-          expect(forwardCount, 1);
-        });
+          router.route('/foo/noLeave').then(expectAsync((_) {
+            expectBack(0);
+            expectForward(0);
+            windowForwardAction();
+            hashChangeController.close().then(expectAsync((_) {
+              expectBack(1);
+              expectForward(0);
+            }));
+          }));
+        }));
       }));
     });
 
@@ -782,12 +784,13 @@ main() {
       _setUpPreleave(useFragment:false);
 
       router.route('/foo/noLeave').then(expectAsync((_) {
-        expect(backCount, 0);
-        expect(forwardCount, 0);
+        expectBack(0);
+        expectForward(0);
         changeWindowLocation();
-        hashChangeController.stream.listen((_) {
-          expect(backCount, 1);
-        });
+
+        hashChangeController.close().then(expectAsync((_) {
+          expectBack(1);
+        }));
       }));
     });
 
@@ -795,23 +798,19 @@ main() {
       _setUpPreleave(useFragment:false);
 
       router.route('/foo/freeLeave1').then(expectAsync((_) {
-        expect(backCount, 0);
-        expect(forwardCount, 0);
+        expectBack(0);
+        expectForward(0);
         changeWindowLocation();
-        hashChangeController.stream.listen((_) {
-          expect(backCount, 0);
-          expect(forwardCount, 0);
-        });
-      }));
 
-      router.route('/foo/noLeave').then(expectAsync((_) {
-        expect(backCount, 0);
-        expect(forwardCount, 0);
-        windowBackAction();
-        hashChangeController.stream.listen((_) {
-          expect(backCount, 1);
-          expect(forwardCount, 0);
-        });
+        router.route('/foo/noLeave').then(expectAsync((_) {
+          expectBack(0);
+          expectForward(0);
+          windowBackAction();
+          hashChangeController.close().then(expectAsync((_) {
+            expectBack(0);
+            expectForward(1);
+          }));
+        }));
       }));
     });
 
@@ -819,33 +818,25 @@ main() {
       _setUpPreleave(useFragment:false);
 
       router.route('/foo/freeLeave1').then(expectAsync((_) {
-        expect(backCount, 0);
-        expect(forwardCount, 0);
+        expectBack(0);
+        expectForward(0);
         changeWindowLocation();
-        hashChangeController.stream.listen((_) {
-          expect(backCount, 0);
-          expect(forwardCount, 0);
-        });
-      }));
 
-      router.route('/foo/freeLeave1').then(expectAsync((_) {
-         expect(backCount, 0);
-         expect(forwardCount, 0);
-         windowBackAction();
-         hashChangeController.stream.listen((_) {
-           expect(backCount, 0);
-           expect(forwardCount, 0);
-         });
-       }));
+        router.route('/foo/freeLeave1').then(expectAsync((_) {
+          expectBack(0);
+          expectForward(0);
+          windowBackAction();
 
-      router.route('/foo/noLeave').then(expectAsync((_) {
-        expect(backCount, 0);
-        expect(forwardCount, 0);
-        windowForwardAction();
-        hashChangeController.stream.listen((_) {
-          expect(backCount, 0);
-          expect(forwardCount, 1);
-        });
+          router.route('/foo/noLeave').then(expectAsync((_) {
+            expectBack(0);
+            expectForward(0);
+            windowForwardAction();
+            hashChangeController.close().then(expectAsync((_) {
+              expectBack(1);
+              expectForward(0);
+            }));
+          }));
+        }));
       }));
     });
   });
@@ -2001,3 +1992,4 @@ main() {
 
 /// An alias for Router.root.findRoute(path)
 r(Router router, String path) => router.root.findRoute(path);
+
