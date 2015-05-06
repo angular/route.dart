@@ -638,23 +638,15 @@ main() {
       _testAllowLeave(false);
     });
 
-    bool noLeaveEntered;
-    bool freeLeave1Entered;
     MockWindow mockWindow;
     StreamController<Event> hashChangeController;
     StreamController<PopStateEvent> popStateEventController;
     Router router;
-    int backCount;
-    int forwardCount;
     int historyCount;
 
     void _setUpPreleave({bool useFragment}) {
       Completer<bool> completer = new Completer<bool>();
       completer.complete(false);
-      noLeaveEntered = false;
-      freeLeave1Entered = false;
-      backCount = 0;
-      forwardCount = 0;
       historyCount = 0;
 
       mockWindow = new MockWindow();
@@ -670,13 +662,6 @@ main() {
       mockWindow.when(callsTo('get onPopState'))
           .alwaysReturn(popStateEventController.stream);
 
-      mockWindow.history.when(callsTo('back')).alwaysCall(() {
-        backCount++;
-      });
-      mockWindow.history.when(callsTo('forward')).alwaysCall(() {
-        forwardCount++;
-      });
-
       mockWindow.history.when(callsTo('get length')).alwaysCall(() => historyCount);
 
       mockWindow.location.when(callsTo('get hash')).alwaysReturn('#/foo');
@@ -685,10 +670,10 @@ main() {
         ..addRoute(name: 'foo', path: '/foo',
             mount: (Route child) => child
               ..addRoute(name: 'noLeave', path: '/noLeave',
-                  enter: (RouteEnterEvent e) => noLeaveEntered = true,
+                  enter: (RouteEnterEvent e) {},
                   preLeave: (RoutePreLeaveEvent e) => e.allowLeave(completer.future))
               ..addRoute(name: 'freeLeave1', path: '/freeLeave1',
-                  enter: (RouteEnterEvent e) => freeLeave1Entered = true));
+                  enter: (RouteEnterEvent e) {}));
       router.listen(ignoreClick: true);
     }
 
