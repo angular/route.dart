@@ -792,6 +792,24 @@ class Router {
         [kvPair.substring(0, splitPoint), kvPair.substring(splitPoint + 1)];
   }
 
+  void _handleRouteResponse(bool allowed) {
+    int newHistoryLength = _window.history.length;
+    // if not allowed, we need to restore the browser location
+    if (!allowed) {
+      if (_historyLength < 50) {
+        if (newHistoryLength > _historyLength) {
+          _window.history.back();
+        } else {
+          _window.history.forward();
+        }
+      } else {
+        window.location.replace(_oldLocation);
+      }
+    }
+    _historyLength = _window.history.length;
+    _oldLocation = window.location.href;
+  }
+
   /**
    * Listens for window history events and invokes the router. On older
    * browsers the hashChange event is used instead.
@@ -803,37 +821,16 @@ class Router {
     }
     _listen = true;
     if (_useFragment) {
+
       _window.onHashChange.listen((_) {
-        route(_normalizeHash(_window.location.hash)).then((allowed) {
-          int newHistoryLength = _window.history.length;
-          // if not allowed, we need to restore the browser location
-          if (!allowed) {
-            if (newHistoryLength > _historyLength) {
-              _window.history.back();
-            } else {
-              _window.history.forward();
-            }
-          }
-          _historyLength = _window.history.length;
-        });
+        route(_normalizeHash(_window.location.hash)).then(_handleRouteResponse);
       });
       route(_normalizeHash(_window.location.hash));
     } else {
       String getPath() =>
           '${_window.location.pathname}${_window.location.hash}';
       _window.onPopState.listen((_) {
-        route(getPath()).then((allowed) {
-          int newHistoryLength = _window.history.length;
-          // if not allowed, we need to restore the browser location
-          if (!allowed) {
-            if (newHistoryLength > _historyLength) {
-              _window.history.back();
-            } else {
-              _window.history.forward();
-            }
-          }
-          _historyLength = _window.history.length;
-        });
+        route(getPath()).then(_handleRouteResponse);
       });
       route(getPath());
     }
