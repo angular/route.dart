@@ -602,7 +602,9 @@ main() {
         });
       });
     });
+  });
 
+  group('preLeave', () {
     void _testAllowLeave(bool allowLeave) {
       var completer = new Completer<bool>();
       bool barEntered = false;
@@ -634,6 +636,190 @@ main() {
 
     test('should veto navigation', () {
       _testAllowLeave(false);
+    });
+
+    MockWindow mockWindow;
+    StreamController<Event> hashChangeController;
+    StreamController<PopStateEvent> popStateEventController;
+    Router router;
+    int historyCount;
+
+    void _setUpPreleave({bool useFragment}) {
+      Completer<bool> completer = new Completer<bool>();
+      completer.complete(false);
+      historyCount = 0;
+
+      mockWindow = new MockWindow();
+      hashChangeController = new StreamController<Event>.broadcast(onListen: () {},
+          onCancel:() {}, sync:false);
+
+      popStateEventController = new StreamController<PopStateEvent>.broadcast(onListen: () {},
+          onCancel:() {}, sync:false);
+
+      mockWindow.when(callsTo('get onHashChange'))
+          .alwaysReturn(hashChangeController.stream);
+
+      mockWindow.when(callsTo('get onPopState'))
+          .alwaysReturn(popStateEventController.stream);
+
+      mockWindow.history.when(callsTo('get length')).alwaysCall(() => historyCount);
+
+      mockWindow.location.when(callsTo('get hash')).alwaysReturn('#/foo');
+      router = new Router(useFragment: true, windowImpl: mockWindow);
+      router.root
+        ..addRoute(name: 'foo', path: '/foo',
+            mount: (Route child) => child
+              ..addRoute(name: 'noLeave', path: '/noLeave',
+                  enter: (RouteEnterEvent e) {},
+                  preLeave: (RoutePreLeaveEvent e) => e.allowLeave(completer.future))
+              ..addRoute(name: 'freeLeave1', path: '/freeLeave1',
+                  enter: (RouteEnterEvent e) {}));
+      router.listen(ignoreClick: true);
+    }
+
+    void changeWindowLocation() {
+      historyCount++;
+      hashChangeController.add(new Event.eventType('KeyboardEvent', 'keyup'));
+    }
+
+    void windowBackAction() {
+      historyCount--;
+      hashChangeController.add(new Event.eventType('KeyboardEvent', 'keyup'));
+    }
+
+    void windowForwardAction() {
+      historyCount++;
+      hashChangeController.add(new Event.eventType('KeyboardEvent', 'keyup'));
+    }
+
+    void expectBack(int count) {
+      mockWindow.history.getLogs(callsTo('back'))
+          .verify(happenedExactly(count));
+    }
+
+    void expectForward(int count) {
+      mockWindow.history.getLogs(callsTo('forward'))
+          .verify(happenedExactly(count));
+    }
+
+    test('should handle location change cancel with useFragment', () {
+      _setUpPreleave(useFragment:true);
+
+      router.route('/foo/noLeave').then(expectAsync((_) {
+        expectBack(0);
+        expectForward(0);
+        changeWindowLocation();
+
+        hashChangeController.close().then(expectAsync((_) {
+          expectBack(1);
+        }));
+      }));
+    });
+
+    test('should handle history.back cancel with useFragment', () {
+      _setUpPreleave(useFragment:true);
+
+      router.route('/foo/freeLeave1').then(expectAsync((_) {
+        expectBack(0);
+        expectForward(0);
+        changeWindowLocation();
+
+        router.route('/foo/noLeave').then(expectAsync((_) {
+          expectBack(0);
+          expectForward(0);
+          windowBackAction();
+          hashChangeController.close().then(expectAsync((_) {
+            expectBack(0);
+            expectForward(1);
+          }));
+        }));
+      }));
+    });
+
+    test('should handle history.forward cancel with useFragment', () {
+      _setUpPreleave(useFragment:true);
+
+      router.route('/foo/freeLeave1').then(expectAsync((_) {
+        expectBack(0);
+        expectForward(0);
+        changeWindowLocation();
+
+        router.route('/foo/freeLeave1').then(expectAsync((_) {
+          expectBack(0);
+          expectForward(0);
+          windowBackAction();
+
+          router.route('/foo/noLeave').then(expectAsync((_) {
+            expectBack(0);
+            expectForward(0);
+            windowForwardAction();
+            hashChangeController.close().then(expectAsync((_) {
+              expectBack(1);
+              expectForward(0);
+            }));
+          }));
+        }));
+      }));
+    });
+
+    test('should handle location change cancel without useFragment', () {
+      _setUpPreleave(useFragment:false);
+
+      router.route('/foo/noLeave').then(expectAsync((_) {
+        expectBack(0);
+        expectForward(0);
+        changeWindowLocation();
+
+        hashChangeController.close().then(expectAsync((_) {
+          expectBack(1);
+        }));
+      }));
+    });
+
+    test('should handle history.back cancel without useFragment', () {
+      _setUpPreleave(useFragment:false);
+
+      router.route('/foo/freeLeave1').then(expectAsync((_) {
+        expectBack(0);
+        expectForward(0);
+        changeWindowLocation();
+
+        router.route('/foo/noLeave').then(expectAsync((_) {
+          expectBack(0);
+          expectForward(0);
+          windowBackAction();
+          hashChangeController.close().then(expectAsync((_) {
+            expectBack(0);
+            expectForward(1);
+          }));
+        }));
+      }));
+    });
+
+    test('should handle history.forward cancel without useFragment', () {
+      _setUpPreleave(useFragment:false);
+
+      router.route('/foo/freeLeave1').then(expectAsync((_) {
+        expectBack(0);
+        expectForward(0);
+        changeWindowLocation();
+
+        router.route('/foo/freeLeave1').then(expectAsync((_) {
+          expectBack(0);
+          expectForward(0);
+          windowBackAction();
+
+          router.route('/foo/noLeave').then(expectAsync((_) {
+            expectBack(0);
+            expectForward(0);
+            windowForwardAction();
+            hashChangeController.close().then(expectAsync((_) {
+              expectBack(1);
+              expectForward(0);
+            }));
+          }));
+        }));
+      }));
     });
   });
 
@@ -1788,3 +1974,4 @@ main() {
 
 /// An alias for Router.root.findRoute(path)
 r(Router router, String path) => router.root.findRoute(path);
+

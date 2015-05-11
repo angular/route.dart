@@ -450,6 +450,7 @@ class Router {
   final bool sortRoutes;
   bool _listen = false;
   WindowClickHandler _clickHandler;
+  int _historyLength = 0;
 
   /**
    * [useFragment] determines whether this Router uses pure paths with
@@ -472,6 +473,9 @@ class Router {
             : useFragment,
         _window = (windowImpl == null) ? window : windowImpl,
         root = new RouteImpl._new() {
+    if (_window != null && _window.history != null) {
+      _historyLength = _window.history.length;
+    }
     if (clickHandler == null) {
       if (linkMatcher == null) {
         linkMatcher = new DefaultRouterLinkMatcher();
@@ -788,6 +792,24 @@ class Router {
         [kvPair.substring(0, splitPoint), kvPair.substring(splitPoint + 1)];
   }
 
+  void _handleRouteResponse(bool allowed) {
+    int newHistoryLength = _window.history.length;
+    // if not allowed, we need to restore the browser location
+    if (!allowed) {
+      if (_historyLength < 50) {
+        if (newHistoryLength > _historyLength) {
+          _window.history.back();
+        } else {
+          _window.history.forward();
+        }
+      } else {
+        window.location.replace(_oldLocation);
+      }
+    }
+    _historyLength = _window.history.length;
+    _oldLocation = window.location.href;
+  }
+
   /**
    * Listens for window history events and invokes the router. On older
    * browsers the hashChange event is used instead.
@@ -799,26 +821,16 @@ class Router {
     }
     _listen = true;
     if (_useFragment) {
+
       _window.onHashChange.listen((_) {
-        route(_normalizeHash(_window.location.hash)).then((allowed) {
-          // if not allowed, we need to restore the browser location
-          if (!allowed) {
-            _window.history.back();
-          }
-        });
+        route(_normalizeHash(_window.location.hash)).then(_handleRouteResponse);
       });
       route(_normalizeHash(_window.location.hash));
     } else {
       String getPath() =>
           '${_window.location.pathname}${_window.location.hash}';
-
       _window.onPopState.listen((_) {
-        route(getPath()).then((allowed) {
-          // if not allowed, we need to restore the browser location
-          if (!allowed) {
-            _window.history.back();
-          }
-        });
+        route(getPath()).then(_handleRouteResponse);
       });
       route(getPath());
     }
