@@ -39,13 +39,13 @@ main() {
         name: 'bar',
         path: '/bar'
     );
-    expect(router.root.getSubRoutes().containsKey('foo'), isTrue);
-    expect(router.root.getSubRoutes().containsKey('bar'), isTrue);
+    expect(router.root.subRoutes.containsKey('foo'), isTrue);
+    expect(router.root.subRoutes.containsKey('bar'), isTrue);
   });
 
   test('getSubRoutes returns null if map is empty', () {
     var router = new Router();
-    expect(router.root.getSubRoutes(), isNull);
+    expect(router.root.subRoutes, isEmpty);
   });
 
   group('use a longer path first', () {

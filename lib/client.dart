@@ -123,7 +123,11 @@ abstract class Route {
    */
   Stream<RouteEnterEvent> get onEnter;
 
-
+  /**
+   * Returns a map of sub-routes associated with this route.
+   *
+   */
+  Map get subRoutes;
 
   void addRoute({String name, Pattern path, bool defaultRoute: false,
         RouteEnterEventHandler enter, RoutePreEnterEventHandler preEnter,
@@ -153,13 +157,6 @@ abstract class Route {
    * If no match is found then null is returned.
    */
   Route findRoute(String routePath);
-
-  /**
-   * Returns all sub-routes associated with this route
-   *
-   * If route has no sub-routes then null is returned.
-   */
-  Map getSubRoutes();
 
   /**
    * Create an return a new [RouteHandle] for this route.
@@ -213,6 +210,9 @@ class RouteImpl extends Route {
   Stream<RouteLeaveEvent> get onLeave => _onLeaveController.stream;
   @override
   Stream<RouteEnterEvent> get onEnter => _onEnterController.stream;
+
+  @override
+  Map<String, Route> get subRoutes => this._routes;
 
   RouteImpl._new({this.name, this.path, this.parent,
                  this.dontLeaveOnParamChanges: false, this.pageTitle,
@@ -287,15 +287,6 @@ class RouteImpl extends Route {
       }
     }
     return currentRoute;
-  }
-
-  @override
-  Map<String, Route> getSubRoutes(){
-    Map<String, RouteImpl> _currentSubRoutes = _routes;
-    if (_currentSubRoutes.isEmpty) {
-      return null;
-    }
-    return _currentSubRoutes;
   }
 
   String _getHead(String tail) {
