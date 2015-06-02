@@ -23,6 +23,9 @@ class RouteHandle implements Route {
   @override
   Stream<RouteLeaveEvent> get onLeave => _onLeaveController.stream;
 
+  @override
+  Map<String, Route> get subRoutes => this._route.subRoutes;
+
   StreamSubscription _onPreEnterSubscription;
   StreamSubscription _onPreLeaveSubscription;
   StreamSubscription _onEnterSubscription;

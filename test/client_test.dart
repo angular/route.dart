@@ -43,7 +43,7 @@ main() {
     expect(router.root.subRoutes.containsKey('bar'), isTrue);
   });
 
-  test('getSubRoutes returns null if map is empty', () {
+  test('return empty map if no sub-routes are present', () {
     var router = new Router();
     expect(router.root.subRoutes, isEmpty);
   });
