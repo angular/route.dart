@@ -123,6 +123,8 @@ abstract class Route {
    */
   Stream<RouteEnterEvent> get onEnter;
 
+
+
   void addRoute({String name, Pattern path, bool defaultRoute: false,
         RouteEnterEventHandler enter, RoutePreEnterEventHandler preEnter,
         RoutePreLeaveEventHandler preLeave, RouteLeaveEventHandler leave,
@@ -151,6 +153,13 @@ abstract class Route {
    * If no match is found then null is returned.
    */
   Route findRoute(String routePath);
+
+  /**
+   * Returns all sub-routes associated with this route
+   *
+   * If routes has no sub-routes then null is returned.
+   */
+  Map getSubRoutes();
 
   /**
    * Create an return a new [RouteHandle] for this route.
@@ -279,6 +288,15 @@ class RouteImpl extends Route {
     }
     return currentRoute;
   }
+
+  @override
+  Map<String, Route> getSubRoutes(){
+    if (_routes.isEmpty) {
+      return null;
+    }
+    return _routes;
+  }
+
 
   String _getHead(String tail) {
     for (RouteImpl route = this; route.parent != null; route = route.parent) {

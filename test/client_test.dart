@@ -28,6 +28,22 @@ main() {
     return router.route('/foo');
   });
 
+  test('sub-routes added with addRoute are returned', () {
+    Router router = new Router();
+    router.root
+    ..addRoute(
+        name: 'foo',
+        path: '/foo'
+    )
+    ..addRoute(
+        name: 'bar',
+        path: '/bar'
+    );
+    expect(router.root.getSubRoutes().isNotEmpty, isTrue);
+    expect(router.root.getSubRoutes().containsKey('/foo') &&
+           router.root.getSubRoutes().containsKey('/bar'), isTrue);
+  });
+
   group('use a longer path first', () {
 
     test('add a longer path first', () {
