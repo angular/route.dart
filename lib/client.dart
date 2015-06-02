@@ -157,7 +157,7 @@ abstract class Route {
   /**
    * Returns all sub-routes associated with this route
    *
-   * If routes has no sub-routes then null is returned.
+   * If route has no sub-routes then null is returned.
    */
   Map getSubRoutes();
 
@@ -291,12 +291,12 @@ class RouteImpl extends Route {
 
   @override
   Map<String, Route> getSubRoutes(){
-    if (_routes.isEmpty) {
+    Map<String, RouteImpl> _currentSubRoutes = _routes;
+    if (_currentSubRoutes.isEmpty) {
       return null;
     }
-    return _routes;
+    return _currentSubRoutes;
   }
-
 
   String _getHead(String tail) {
     for (RouteImpl route = this; route.parent != null; route = route.parent) {

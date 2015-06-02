@@ -29,7 +29,7 @@ main() {
   });
 
   test('sub-routes added with addRoute are returned', () {
-    Router router = new Router();
+    var router = new Router();
     router.root
     ..addRoute(
         name: 'foo',
@@ -39,9 +39,13 @@ main() {
         name: 'bar',
         path: '/bar'
     );
-    expect(router.root.getSubRoutes().isNotEmpty, isTrue);
-    expect(router.root.getSubRoutes().containsKey('/foo') &&
-           router.root.getSubRoutes().containsKey('/bar'), isTrue);
+    expect(router.root.getSubRoutes().containsKey('foo'), isTrue);
+    expect(router.root.getSubRoutes().containsKey('bar'), isTrue);
+  });
+
+  test('getSubRoutes returns null if map is empty', () {
+    var router = new Router();
+    expect(router.root.getSubRoutes(), isNull);
   });
 
   group('use a longer path first', () {
