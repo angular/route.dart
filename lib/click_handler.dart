@@ -23,25 +23,21 @@ typedef WindowClickHandler(Event e);
  * on deciding if a link should be handled or not.
  */
 class DefaultWindowClickHandler {
-
   final RouterLinkMatcher _linkMatcher;
   final Router _router;
   final _HashNormalizer _normalizer;
   final Window _window;
   bool _useFragment;
 
-
-  DefaultWindowClickHandler(this._linkMatcher,
-                     this._router,
-                     this._useFragment,
-                     this._window,
-                     this._normalizer);
+  DefaultWindowClickHandler(this._linkMatcher, this._router, this._useFragment,
+      this._window, this._normalizer);
 
   void call(Event e) {
     Element el = e.target;
     while (el != null && el is! AnchorElement) {
       el = el.parent;
-    };
+    }
+    ;
     if (el == null) return;
     assert(el is AnchorElement);
     AnchorElement anchor = el;
@@ -58,4 +54,3 @@ class DefaultWindowClickHandler {
     }
   }
 }
-

@@ -69,8 +69,12 @@ main() {
     var pattern = new UrlPattern(r'/foo#(\w+)');
     expect(pattern.matches('/foo'), false);
     expect(pattern.matchesNonFragment('/foo'), true);
-    expect(() { new UrlPattern(r'(#)'); }, throws);
-    expect(() { new UrlPattern(r'##'); }, throws);
+    expect(() {
+      new UrlPattern(r'(#)');
+    }, throws);
+    expect(() {
+      new UrlPattern(r'##');
+    }, throws);
   });
 }
 

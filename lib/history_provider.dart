@@ -5,9 +5,9 @@ import 'dart:html';
 
 import 'link_matcher.dart';
 
-
 abstract class HistoryProvider {
-  void clickHandler(Event e, RouterLinkMatcher linkMatcher, Future<bool> gotoUrl(String url));
+  void clickHandler(
+      Event e, RouterLinkMatcher linkMatcher, Future<bool> gotoUrl(String url));
   Stream get onChange;
   String getPath();
   void go(String path, String title, bool replace);
@@ -15,9 +15,7 @@ abstract class HistoryProvider {
   String get urlStub;
 }
 
-
 class BrowserHistory implements HistoryProvider {
-
   Window _window;
 
   BrowserHistory({Window windowImpl}) {
@@ -27,11 +25,13 @@ class BrowserHistory implements HistoryProvider {
   Stream get onChange => _window.onPopState;
   String get urlStub => '';
 
-  void clickHandler(Event e, RouterLinkMatcher linkMatcher, Future<bool> gotoUrl(String url)) {
+  void clickHandler(Event e, RouterLinkMatcher linkMatcher,
+      Future<bool> gotoUrl(String url)) {
     Element el = e.target;
     while (el != null && el is! AnchorElement) {
       el = el.parent;
-    };
+    }
+    ;
     if (el == null) return;
     assert(el is AnchorElement);
     AnchorElement anchor = el;
@@ -45,7 +45,7 @@ class BrowserHistory implements HistoryProvider {
   }
 
   String getPath() => '${_window.location.pathname}${_window.location.search}'
-        '${_window.location.hash}';
+      '${_window.location.hash}';
 
   void go(String path, String title, bool replace) {
     if (title == null) {
@@ -64,11 +64,9 @@ class BrowserHistory implements HistoryProvider {
   void back() {
     _window.history.back();
   }
-
 }
 
 class HashHistory implements HistoryProvider {
-
   Window _window;
 
   HashHistory({Window windowImpl}) {
@@ -78,11 +76,13 @@ class HashHistory implements HistoryProvider {
   Stream get onChange => _window.onHashChange;
   String get urlStub => '#';
 
-  void clickHandler(Event e, RouterLinkMatcher linkMatcher, Future<bool> gotoUrl(String url)) {
+  void clickHandler(Event e, RouterLinkMatcher linkMatcher,
+      Future<bool> gotoUrl(String url)) {
     Element el = e.target;
     while (el != null && el is! AnchorElement) {
       el = el.parent;
-    };
+    }
+    ;
     if (el == null) return;
     assert(el is AnchorElement);
     AnchorElement anchor = el;
@@ -116,12 +116,12 @@ class HashHistory implements HistoryProvider {
 }
 
 class MemoryHistory implements HistoryProvider {
-
   // keep a list of urls
   List<String> _urlList;
 
   // keep track of a unique namespace for internal urls
-  final String _namespace = 'router${new DateTime.now().millisecondsSinceEpoch}:';
+  final String _namespace =
+      'router${new DateTime.now().millisecondsSinceEpoch}:';
 
   // broadcast changes to url
   StreamController<String> _urlStreamController;
@@ -136,11 +136,13 @@ class MemoryHistory implements HistoryProvider {
   Stream get onChange => _urlStream;
   String get urlStub => _namespace;
 
-  void clickHandler(Event e, RouterLinkMatcher linkMatcher, Future<bool> gotoUrl(String url)) {
+  void clickHandler(Event e, RouterLinkMatcher linkMatcher,
+      Future<bool> gotoUrl(String url)) {
     Element el = e.target;
     while (el != null && el is! AnchorElement) {
       el = el.parent;
-    };
+    }
+    ;
     if (el == null) return;
     assert(el is AnchorElement);
     AnchorElement anchor = el;
@@ -172,4 +174,3 @@ class MemoryHistory implements HistoryProvider {
     _urlStreamController.add(_urlList.last);
   }
 }
-

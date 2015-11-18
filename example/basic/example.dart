@@ -8,8 +8,8 @@ import 'package:route_hierarchical/history_provider.dart';
 
 main() {
   new Logger('')
-      ..level = Level.FINEST
-      ..onRecord.listen((r) => print('[${r.level}] ${r.message}'));
+    ..level = Level.FINEST
+    ..onRecord.listen((r) => print('[${r.level}] ${r.message}'));
 
   querySelector('#warning').remove();
 
@@ -17,8 +17,14 @@ main() {
   var router = new Router(useFragment: true);
 
   router.root
-      ..addRoute(name: 'one', defaultRoute: true, path: '/one', pageTitle: 'Route One', enter: showR1One)
-      ..addRoute(name: 'two', path: '/two', pageTitle: 'Route Two', enter: showR1Two);
+    ..addRoute(
+        name: 'one',
+        defaultRoute: true,
+        path: '/one',
+        pageTitle: 'Route One',
+        enter: showR1One)
+    ..addRoute(
+        name: 'two', path: '/two', pageTitle: 'Route Two', enter: showR1Two);
 
   querySelector('#R1linkOne').attributes['href'] = router.url('one');
   querySelector('#R1linkTwo').attributes['href'] = router.url('two');
@@ -26,11 +32,18 @@ main() {
   router.listen();
 
   // set up a second router that doesn't affect the url for a different section of the page
-  var router2 = new Router(useFragment:true, historyProvider: new MemoryHistory());
+  var router2 =
+      new Router(useFragment: true, historyProvider: new MemoryHistory());
 
   router2.root
-    ..addRoute(name: 'one', path: '/one', pageTitle: 'Route One', enter: showR2One)
-    ..addRoute(name: 'two', defaultRoute: true, path: '/two', pageTitle: 'Route Two', enter: showR2Two);
+    ..addRoute(
+        name: 'one', path: '/one', pageTitle: 'Route One', enter: showR2One)
+    ..addRoute(
+        name: 'two',
+        defaultRoute: true,
+        path: '/two',
+        pageTitle: 'Route Two',
+        enter: showR2Two);
 
   querySelector('#R2linkOne').attributes['href'] = router2.url('one');
   querySelector('#R2linkTwo').attributes['href'] = router2.url('two');
