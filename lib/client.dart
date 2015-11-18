@@ -12,6 +12,7 @@ import 'package:logging/logging.dart';
 
 import 'src/utils.dart';
 
+import 'history_provider.dart';
 import 'link_matcher.dart';
 import 'click_handler.dart';
 import 'url_matcher.dart';
@@ -445,8 +446,7 @@ abstract class Routable {
  * and creating HTML event handlers that navigate to a URL.
  */
 class Router {
-  final bool _useFragment;
-  final Window _window;
+  HistoryProvider _history;
   final Route root;
   final _onRouteStart =
       new StreamController<RouteStartEvent>.broadcast(sync: true);
@@ -460,27 +460,24 @@ class Router {
    * value is null which then determines the behavior based on
    * [History.supportsState].
    */
-  Router({bool useFragment, Window windowImpl, bool sortRoutes: true,
+  Router({bool useFragment, HistoryProvider historyProvider, bool sortRoutes: true,
          RouterLinkMatcher linkMatcher, WindowClickHandler clickHandler})
-      : this._init(null, useFragment: useFragment, windowImpl: windowImpl,
+      : this._init(null, useFragment: useFragment, historyProvider: historyProvider,
           sortRoutes: sortRoutes, linkMatcher: linkMatcher,
           clickHandler: clickHandler);
 
 
-  Router._init(Router parent, {bool useFragment, Window windowImpl,
+  Router._init(Router parent, {bool useFragment, HistoryProvider historyProvider,
       this.sortRoutes, RouterLinkMatcher linkMatcher,
       WindowClickHandler clickHandler})
-      : _useFragment = (useFragment == null)
-            ? !History.supportsState
-            : useFragment,
-        _window = (windowImpl == null) ? window : windowImpl,
-        root = new RouteImpl._new() {
+      : root = new RouteImpl._new() {
+    useFragment = (useFragment == null) ? !History.supportsState : useFragment;
+    _history = historyProvider ?? (useFragment ? new HashHistory() : new BrowserHistory());
     if (clickHandler == null) {
       if (linkMatcher == null) {
         linkMatcher = new DefaultRouterLinkMatcher();
       }
-      _clickHandler = new DefaultWindowClickHandler(linkMatcher, this,
-          _useFragment, _window, _normalizeHash);
+      _clickHandler = (e) => _history.clickHandler(e, linkMatcher, this.gotoUrl);
     } else {
       _clickHandler = clickHandler;
     }
@@ -522,7 +519,6 @@ class Router {
 
     var treePath = _matchingTreePath(path, baseRoute);
     // Figure out the list of routes that will be leaved
-    var mustLeave = trimmedActivePath;
     var future =
         _preLeave(path, treePath, trimmedActivePath, baseRoute, forceReload);
     _onRouteStart.add(new RouteStartEvent._new(path, future));
@@ -738,7 +734,7 @@ class Router {
     parameters = parameters == null ? {} : parameters;
     var routeToGo = _findRoute(baseRoute, routePath);
     var tail = baseRoute._getTailUrl(routeToGo, parameters);
-    return (_useFragment ? '#' : '') + baseRoute._getHead(tail) +
+    return _history.urlStub + baseRoute._getHead(tail) +
         _buildQuery(queryParameters);
   }
 
@@ -813,34 +809,21 @@ class Router {
       throw new StateError('listen can only be called once');
     }
     _listen = true;
-    if (_useFragment) {
-      _window.onHashChange.listen((_) {
-        route(_normalizeHash(_window.location.hash)).then((allowed) {
-          // if not allowed, we need to restore the browser location
-          if (!allowed) {
-            _window.history.back();
-          }
-        });
-      });
-      route(_normalizeHash(_window.location.hash));
-    } else {
-      String getPath() =>
-          '${_window.location.pathname}${_window.location.search}'
-          '${_window.location.hash}';
 
-      _window.onPopState.listen((_) {
-        route(getPath()).then((allowed) {
-          // if not allowed, we need to restore the browser location
-          if (!allowed) {
-            _window.history.back();
-          }
-        });
+    // modified with history alternative
+    _history.onChange.listen((_) {
+      route(_history.getPath()).then((allowed) {
+        // if not allowed, we need to restore the browser location
+        if (!allowed) {
+          _history.back();
+        }
       });
-      route(getPath());
-    }
+    });
+    route(_history.getPath());
+
     if (!ignoreClick) {
       if (appRoot == null) {
-        appRoot = _window.document.documentElement;
+        appRoot = window.document.documentElement;
       }
       _logger.finest('listen on win');
       appRoot.onClick
@@ -848,8 +831,6 @@ class Router {
           .listen(_clickHandler);
     }
   }
-
-  String _normalizeHash(String hash) => hash.isEmpty ? '' : hash.substring(1);
 
   /**
    * Navigates the browser to the path produced by [url] with [args] by calling
@@ -866,25 +847,7 @@ class Router {
       });
 
   void _go(String path, String title, bool replace) {
-    if (_useFragment) {
-      if (replace) {
-        _window.location.replace('#$path');
-      } else {
-        _window.location.assign('#$path');
-      }
-    } else {
-      if (title == null) {
-        title = (_window.document as HtmlDocument).title;
-      }
-      if (replace) {
-        _window.history.replaceState(null, title, path);
-      } else {
-        _window.history.pushState(null, title, path);
-      }
-    }
-    if (title != null) {
-      (_window.document as HtmlDocument).title = title;
-    }
+    _history.go(path, title, replace);
   }
 
   /**
