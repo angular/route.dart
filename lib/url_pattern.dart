@@ -183,8 +183,9 @@ class UrlPattern implements UrlMatcher, Pattern {
     var iter = p.allMatches(str).iterator;
     if (iter.moveNext()) {
       var match = iter.current;
-      return (match.start == 0) && (match.end == str.length)
-          && (!iter.moveNext());
+      return (match.start == 0) &&
+          (match.end == str.length) &&
+          (!iter.moveNext());
     }
     return false;
   }
