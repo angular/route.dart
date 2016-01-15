@@ -12,14 +12,15 @@ import 'package:logging/logging.dart';
 
 import 'src/utils.dart';
 
+import 'history_provider.dart';
+export 'history_provider.dart';
 import 'link_matcher.dart';
-import 'click_handler.dart';
 import 'url_matcher.dart';
 export 'url_matcher.dart';
 import 'url_template.dart';
 
 part 'route_handle.dart';
-
+part 'route_view.dart';
 
 final _logger = new Logger('route');
 const _PATH_SEPARATOR = '.';
@@ -28,6 +29,13 @@ typedef void RoutePreEnterEventHandler(RoutePreEnterEvent event);
 typedef void RouteEnterEventHandler(RouteEnterEvent event);
 typedef void RoutePreLeaveEventHandler(RoutePreLeaveEvent event);
 typedef void RouteLeaveEventHandler(RouteLeaveEvent event);
+
+/**
+ * WindowClickHandler can be used as a hook into [Router] to
+ * modify behavior right after user clicks on an element, and
+ * before the URL in the browser changes.
+ */
+typedef void WindowClickHandler(Event e);
 
 /**
  * [Route] represents a node in the route tree.
@@ -77,15 +85,6 @@ abstract class Route {
   String get pageTitle;
 
   /**
-   * Returns a stream of [RouteEnterEvent] events. The [RouteEnterEvent] event
-   * is fired when route has already been made active, but before subroutes
-   * are entered. The event starts at the root and propagates from parent to
-   * child routes.
-   */
-  @Deprecated("use [onEnter] instead.")
-  Stream<RouteEnterEvent> get onRoute;
-
-  /**
    * Returns a stream of [RoutePreEnterEvent] events. The [RoutePreEnterEvent]
    * event is fired when the route is matched during the routing, but before
    * any previous routes were left, or any new routes were entered. The event
@@ -123,23 +122,18 @@ abstract class Route {
    */
   Stream<RouteEnterEvent> get onEnter;
 
-  void addRoute({String name, Pattern path, bool defaultRoute: false,
-        RouteEnterEventHandler enter, RoutePreEnterEventHandler preEnter,
-        RoutePreLeaveEventHandler preLeave, RouteLeaveEventHandler leave,
-        mount, dontLeaveOnParamChanges: false, String pageTitle,
-        List<Pattern> watchQueryParameters});
-
-  /**
-   * Queries sub-routes using the [routePath] and returns the matching [Route].
-   *
-   * [routePath] is a dot-separated list of route names. Ex: foo.bar.baz, which
-   * means that current route should contain route named 'foo', the 'foo' route
-   * should contain route named 'bar', and so on.
-   *
-   * If no match is found then null is returned.
-   */
-  @Deprecated("use [findRoute] instead.")
-  Route getRoute(String routePath);
+  void addRoute(
+      {String name,
+      Pattern path,
+      bool defaultRoute: false,
+      RouteEnterEventHandler enter,
+      RoutePreEnterEventHandler preEnter,
+      RoutePreLeaveEventHandler preLeave,
+      RouteLeaveEventHandler leave,
+      mount,
+      dontLeaveOnParamChanges: false,
+      String pageTitle,
+      List<Pattern> watchQueryParameters});
 
   /**
    * Queries sub-routes using the [routePath] and returns the matching [Route].
@@ -194,9 +188,6 @@ class RouteImpl extends Route {
   final bool dontLeaveOnParamChanges;
 
   @override
-  @Deprecated("use [onEnter] instead.")
-  Stream<RouteEnterEvent> get onRoute => onEnter;
-  @override
   Stream<RoutePreEnterEvent> get onPreEnter => _onPreEnterController.stream;
   @override
   Stream<RoutePreLeaveEvent> get onPreLeave => _onPreLeaveController.stream;
@@ -205,9 +196,13 @@ class RouteImpl extends Route {
   @override
   Stream<RouteEnterEvent> get onEnter => _onEnterController.stream;
 
-  RouteImpl._new({this.name, this.path, this.parent,
-                 this.dontLeaveOnParamChanges: false, this.pageTitle,
-                 watchQueryParameters})
+  RouteImpl._new(
+      {this.name,
+      this.path,
+      this.parent,
+      this.dontLeaveOnParamChanges: false,
+      this.pageTitle,
+      watchQueryParameters})
       : _onEnterController =
             new StreamController<RouteEnterEvent>.broadcast(sync: true),
         _onPreEnterController =
@@ -219,10 +214,17 @@ class RouteImpl extends Route {
         _watchQueryParameters = watchQueryParameters;
 
   @override
-  void addRoute({String name, Pattern path, bool defaultRoute: false,
-      RouteEnterEventHandler enter, RoutePreEnterEventHandler preEnter,
-      RoutePreLeaveEventHandler preLeave, RouteLeaveEventHandler leave,
-      mount, dontLeaveOnParamChanges: false, String pageTitle,
+  void addRoute(
+      {String name,
+      Pattern path,
+      bool defaultRoute: false,
+      RouteEnterEventHandler enter,
+      RoutePreEnterEventHandler preEnter,
+      RoutePreLeaveEventHandler preLeave,
+      RouteLeaveEventHandler leave,
+      mount,
+      dontLeaveOnParamChanges: false,
+      String pageTitle,
       List<Pattern> watchQueryParameters}) {
     if (name == null) {
       throw new ArgumentError('name is required for all routes');
@@ -236,14 +238,19 @@ class RouteImpl extends Route {
 
     var matcher = path is UrlMatcher ? path : new UrlTemplate(path.toString());
 
-    var route = new RouteImpl._new(name: name, path: matcher, parent: this,
-        dontLeaveOnParamChanges: dontLeaveOnParamChanges, pageTitle: pageTitle,
+    var route = new RouteImpl._new(
+        name: name,
+        path: matcher,
+        parent: this,
+        dontLeaveOnParamChanges: dontLeaveOnParamChanges,
+        pageTitle: pageTitle,
         watchQueryParameters: watchQueryParameters);
 
-    route..onPreEnter.listen(preEnter)
-         ..onPreLeave.listen(preLeave)
-         ..onEnter.listen(enter)
-         ..onLeave.listen(leave);
+    route
+      ..onPreEnter.listen(preEnter)
+      ..onPreLeave.listen(preLeave)
+      ..onEnter.listen(enter)
+      ..onLeave.listen(leave);
 
     if (mount != null) {
       if (mount is Function) {
@@ -255,15 +262,17 @@ class RouteImpl extends Route {
 
     if (defaultRoute) {
       if (_defaultRoute != null) {
-        throw new StateError('Only one default route can be added.');
+        _logger.warning(
+            'Only one default route is supported at each level of the route'
+            ' hierarchy. ${_defaultRoute.name} has already been specified'
+            ' as the default for this level, so $name will not serve as the'
+            ' default.');
+      } else {
+        _defaultRoute = route;
       }
-      _defaultRoute = route;
     }
     _routes[name] = route;
   }
-
-  @override
-  Route getRoute(String routePath) => findRoute(routePath);
 
   @override
   Route findRoute(String routePath) {
@@ -297,16 +306,17 @@ class RouteImpl extends Route {
     var tail = '';
     for (RouteImpl route = routeToGo; route != this; route = route.parent) {
       tail = route.path.reverse(
-          parameters: _joinParams(parameters == null ?
-              route.parameters : parameters, route._lastEvent),
+          parameters: _joinParams(
+              parameters == null ? route.parameters : parameters,
+              route._lastEvent),
           tail: tail);
     }
     return tail;
   }
 
-  Map _joinParams(Map parameters, RouteEvent lastEvent) => lastEvent == null
-      ? parameters
-      : new Map.from(lastEvent.parameters)..addAll(parameters);
+  Map _joinParams(Map parameters, RouteEvent lastEvent) =>
+      lastEvent == null ? parameters : new Map.from(lastEvent.parameters)
+        ..addAll(parameters);
 
   /**
    * Returns a URL for this route. The tail (url generated by the child path)
@@ -340,8 +350,9 @@ class RouteImpl extends Route {
   @override
   Map get parameters {
     if (isActive) {
-      return _lastEvent == null ?
-          const {} : new Map.from(_lastEvent.parameters);
+      return _lastEvent == null
+          ? const {}
+          : new Map.from(_lastEvent.parameters);
     }
     return null;
   }
@@ -353,8 +364,9 @@ class RouteImpl extends Route {
   @override
   Map get queryParameters {
     if (isActive) {
-      return _lastEvent == null ?
-          const {} : new Map.from(_lastEvent.queryParameters);
+      return _lastEvent == null
+          ? const {}
+          : new Map.from(_lastEvent.queryParameters);
     }
     return null;
   }
@@ -395,8 +407,8 @@ class RouteEnterEvent extends RouteEvent {
       : super(path, parameters, queryParameters, route);
 
   RouteEnterEvent._fromMatch(_Match m)
-      : this(m.urlMatch.match, m.urlMatch.parameters,
-          m.queryParameters, m.route);
+      : this(m.urlMatch.match, m.urlMatch.parameters, m.queryParameters,
+            m.route);
 }
 
 class RouteLeaveEvent extends RouteEvent {
@@ -440,13 +452,12 @@ abstract class Routable {
 }
 
 /**
- * Stores a set of [UrlPattern] to [Handler] associations and provides methods
+ * Stores a set of [UrlTemplate] to [Handler] associations and provides methods
  * for calling a handler for a URL path, listening to [Window] history events,
  * and creating HTML event handlers that navigate to a URL.
  */
 class Router {
-  final bool _useFragment;
-  final Window _window;
+  HistoryProvider _history;
   final Route root;
   final _onRouteStart =
       new StreamController<RouteStartEvent>.broadcast(sync: true);
@@ -459,31 +470,34 @@ class Router {
    * [History.pushState] or paths + fragments and [Location.assign]. The default
    * value is null which then determines the behavior based on
    * [History.supportsState].
+   *
+   * If [historyProvider] isn't explicitly specified, the proper provider will
+   * be selected based upon [useFragment].
+   * [useFragment] == true => HashProvider
+   * [useFragment] == false => BrowserProvider
    */
-  Router({bool useFragment, Window windowImpl, bool sortRoutes: true,
-         RouterLinkMatcher linkMatcher, WindowClickHandler clickHandler})
-      : this._init(null, useFragment: useFragment, windowImpl: windowImpl,
-          sortRoutes: sortRoutes, linkMatcher: linkMatcher,
-          clickHandler: clickHandler);
+  Router(
+      {bool useFragment,
+      HistoryProvider historyProvider,
+      bool sortRoutes: true,
+      RouterLinkMatcher linkMatcher})
+      : this._init(null,
+            useFragment: useFragment,
+            historyProvider: historyProvider,
+            sortRoutes: sortRoutes,
+            linkMatcher: linkMatcher);
 
-
-  Router._init(Router parent, {bool useFragment, Window windowImpl,
-      this.sortRoutes, RouterLinkMatcher linkMatcher,
-      WindowClickHandler clickHandler})
-      : _useFragment = (useFragment == null)
-            ? !History.supportsState
-            : useFragment,
-        _window = (windowImpl == null) ? window : windowImpl,
-        root = new RouteImpl._new() {
-    if (clickHandler == null) {
-      if (linkMatcher == null) {
-        linkMatcher = new DefaultRouterLinkMatcher();
-      }
-      _clickHandler = new DefaultWindowClickHandler(linkMatcher, this,
-          _useFragment, _window, _normalizeHash);
-    } else {
-      _clickHandler = clickHandler;
-    }
+  Router._init(Router parent,
+      {bool useFragment,
+      HistoryProvider historyProvider,
+      this.sortRoutes,
+      RouterLinkMatcher linkMatcher})
+      : root = new RouteImpl._new() {
+    useFragment = useFragment ?? !History.supportsState;
+    _history = historyProvider ??
+        (useFragment ? new HashHistory() : new BrowserHistory());
+    linkMatcher ??= new DefaultRouterLinkMatcher();
+    _clickHandler = (e) => _history.clickHandler(e, linkMatcher, this.gotoUrl);
   }
 
   /**
@@ -506,8 +520,8 @@ class Router {
    * to reload, even if they are already active and none of the parameters
    * changed.
    */
-  Future<bool> route(String path, {Route startingFrom,
-      bool forceReload: false}) {
+  Future<bool> route(String path,
+      {Route startingFrom, bool forceReload: false}) {
     _logger.finest('route path=$path startingFrom=$startingFrom '
         'forceReload=$forceReload');
     var baseRoute;
@@ -522,11 +536,51 @@ class Router {
 
     var treePath = _matchingTreePath(path, baseRoute);
     // Figure out the list of routes that will be leaved
-    var mustLeave = trimmedActivePath;
     var future =
-        _preLeave(path, treePath, trimmedActivePath, baseRoute, forceReload);
+        _preLeave(path, treePath, trimmedActivePath, baseRoute, forceReload)
+            .then((success) {
+      // if the route change was successful, change the pageTitle
+      if ((success) && (treePath.isNotEmpty)) {
+        _history.pageTitle = treePath.last.route.pageTitle;
+      }
+      return success;
+    });
     _onRouteStart.add(new RouteStartEvent._new(path, future));
     return future;
+  }
+
+  bool isUrlActive(String path, {Route startingFrom}) {
+    // get the tree path corresponding to this route
+    Route baseRoute = startingFrom == null ? root : _dehandle(startingFrom);
+    List<_Match> treePath = _matchingTreePath(path, baseRoute);
+
+    // are all route segments active with matching parameters?
+    for (_Match matcher in treePath) {
+      // is the route active?
+      if (!matcher.route.isActive) {
+        return false;
+      }
+
+      // do the route parameters match?
+      for (String key in matcher.urlMatch.parameters.keys) {
+        if (!matcher.route.parameters.containsKey(key) ||
+            matcher.route.parameters[key] != matcher.urlMatch.parameters[key]) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  List<RouteView> getRoutePathForUrl(String path, {Route startingFrom}) {
+    // get the tree path corresponding to this route
+    Route baseRoute = startingFrom == null ? root : _dehandle(startingFrom);
+    List<_Match> treePath = _matchingTreePath(path, baseRoute);
+    return treePath.map((matcher) {
+      return new RouteView(matcher.route,
+          parameters: matcher.urlMatch.parameters,
+          queryParameters: matcher.queryParameters);
+    }).toList();
   }
 
   /**
@@ -543,8 +597,9 @@ class Router {
     var leaveBase = baseRoute;
     for (var i = 0, ll = min(activePath.length, treePath.length); i < ll; i++) {
       if (mustLeave.first == treePath[i].route &&
-          (treePath[i].route.dontLeaveOnParamChanges || !(forceReload ||
-              _paramsChanged(treePath[i].route, treePath[i])))) {
+          (treePath[i].route.dontLeaveOnParamChanges ||
+              !(forceReload ||
+                  _paramsChanged(treePath[i].route, treePath[i])))) {
         mustLeave = mustLeave.skip(1);
         leaveBase = leaveBase._currentRoute;
       } else {
@@ -563,8 +618,8 @@ class Router {
     return Future.wait(preLeaving).then((List<bool> results) {
       if (!results.any((r) => r == false)) {
         var leaveFn = () => _leave(mustLeave, leaveBase);
-        return _preEnter(path, treePath, activePath, baseRoute, leaveFn,
-            forceReload);
+        return _preEnter(
+            path, treePath, activePath, baseRoute, leaveFn, forceReload);
       }
       return new Future.value(false);
     });
@@ -587,8 +642,12 @@ class Router {
     }
   }
 
-  Future<bool> _preEnter(String path, List<_Match> treePath,
-      List<Route> activePath, RouteImpl baseRoute, Function leaveFn,
+  Future<bool> _preEnter(
+      String path,
+      List<_Match> treePath,
+      List<Route> activePath,
+      RouteImpl baseRoute,
+      Function leaveFn,
       bool forceReload) {
     var toEnter = treePath;
     var tail = path;
@@ -641,8 +700,9 @@ class Router {
         .where((RouteImpl r) => r.path.match(path) != null)
         .toList();
 
-    return sortRoutes ?
-        (routes..sort((r1, r2) => r1.path.compareTo(r2.path))) : routes;
+    return sortRoutes
+        ? (routes..sort((r1, r2) => r1.path.compareTo(r2.path)))
+        : routes;
   }
 
   /// Returns the path as a list of [_Match]
@@ -675,24 +735,24 @@ class Router {
   bool _paramsChanged(RouteImpl route, _Match match) {
     var lastEvent = route._lastEvent;
     return lastEvent == null ||
-           lastEvent.path != match.urlMatch.match ||
-           !mapsShallowEqual(lastEvent.parameters, match.urlMatch.parameters) ||
-           !mapsShallowEqual(
-               _filterQueryParams(
-                   lastEvent.queryParameters, route._watchQueryParameters),
-               _filterQueryParams(
-                   match.queryParameters, route._watchQueryParameters));
+        lastEvent.path != match.urlMatch.match ||
+        !mapsShallowEqual(lastEvent.parameters, match.urlMatch.parameters) ||
+        !mapsShallowEqual(
+            _filterQueryParams(
+                lastEvent.queryParameters, route._watchQueryParameters),
+            _filterQueryParams(
+                match.queryParameters, route._watchQueryParameters));
   }
 
-  Map _filterQueryParams(Map queryParameters,
-                         List<Pattern> watchQueryParameters) {
+  Map _filterQueryParams(
+      Map queryParameters, List<Pattern> watchQueryParameters) {
     if (watchQueryParameters == null) {
       return queryParameters;
     }
     Map result = {};
     queryParameters.keys.forEach((key) {
-      if (watchQueryParameters.any((pattern) =>
-          pattern.matchAsPrefix(key) != null)) {
+      if (watchQueryParameters
+          .any((pattern) => pattern.matchAsPrefix(key) != null)) {
         result[key] = queryParameters[key];
       }
     });
@@ -714,8 +774,11 @@ class Router {
   }
 
   /// Navigates to a given relative route path, and parameters.
-  Future<bool> go(String routePath, Map parameters, {Route startingFrom,
-       bool replace: false, Map queryParameters, bool forceReload: false}) {
+  Future<bool> go(String routePath, Map parameters,
+      {Route startingFrom,
+      bool replace: false,
+      Map queryParameters,
+      bool forceReload: false}) {
     RouteImpl baseRoute = startingFrom == null ? root : _dehandle(startingFrom);
     var routeToGo = _findRoute(baseRoute, routePath);
     var newTail = baseRoute._getTailUrl(routeToGo, parameters) +
@@ -724,22 +787,26 @@ class Router {
     _logger.finest('go $newUrl');
     return route(newTail, startingFrom: baseRoute, forceReload: forceReload)
         .then((success) {
-          if (success) {
-            _go(newUrl, routeToGo.pageTitle, replace);
-          }
-          return success;
-        });
+      if (success) {
+        _go(newUrl, replace);
+      }
+      return success;
+    });
   }
 
   /// Returns an absolute URL for a given relative route path and parameters.
-  String url(String routePath, {Route startingFrom, Map parameters,
-      Map queryParameters}) {
+  String url(String routePath,
+      {Route startingFrom, Map parameters, Map queryParameters}) {
     var baseRoute = startingFrom == null ? root : _dehandle(startingFrom);
     parameters = parameters == null ? {} : parameters;
     var routeToGo = _findRoute(baseRoute, routePath);
     var tail = baseRoute._getTailUrl(routeToGo, parameters);
-    return (_useFragment ? '#' : '') + baseRoute._getHead(tail) +
-        _buildQuery(queryParameters);
+    return normalizeUrl(
+        baseRoute._getHead(tail) + _buildQuery(queryParameters));
+  }
+
+  String normalizeUrl(String url) {
+    return _history.urlStub + url;
   }
 
   /// Attempts to find [Route] for the specified [routePath] relative to the
@@ -757,12 +824,13 @@ class Router {
     if (queryParams == null || queryParams.isEmpty) {
       return '';
     }
-    return '?' + queryParams.keys
-        .map((key) => '$key=${Uri.encodeComponent(queryParams[key])}')
-        .join('&');
+    return '?' +
+        queryParams.keys
+            .map((key) => '$key=${Uri.encodeComponent(queryParams[key])}')
+            .join('&');
   }
 
-  Route _dehandle(Route r) => r is RouteHandle ? r._getHost(r): r;
+  Route _dehandle(Route r) => r is RouteHandle ? r._getHost(r) : r;
 
   _Match _getMatch(Route route, String path) {
     var match = route.path.match(path);
@@ -798,9 +866,9 @@ class Router {
     }
     var splitPoint = kvPair.indexOf('=');
 
-    return (splitPoint == -1) ?
-        [kvPair, ''] :
-        [kvPair.substring(0, splitPoint), kvPair.substring(splitPoint + 1)];
+    return (splitPoint == -1)
+        ? [kvPair, '']
+        : [kvPair.substring(0, splitPoint), kvPair.substring(splitPoint + 1)];
   }
 
   /**
@@ -813,34 +881,21 @@ class Router {
       throw new StateError('listen can only be called once');
     }
     _listen = true;
-    if (_useFragment) {
-      _window.onHashChange.listen((_) {
-        route(_normalizeHash(_window.location.hash)).then((allowed) {
-          // if not allowed, we need to restore the browser location
-          if (!allowed) {
-            _window.history.back();
-          }
-        });
-      });
-      route(_normalizeHash(_window.location.hash));
-    } else {
-      String getPath() =>
-          '${_window.location.pathname}${_window.location.search}'
-          '${_window.location.hash}';
 
-      _window.onPopState.listen((_) {
-        route(getPath()).then((allowed) {
-          // if not allowed, we need to restore the browser location
-          if (!allowed) {
-            _window.history.back();
-          }
-        });
+    // modified with history alternative
+    _history.onChange.listen((_) {
+      route(_history.path).then((allowed) {
+        // if not allowed, we need to restore the browser location
+        if (!allowed) {
+          _history.back();
+        }
       });
-      route(getPath());
-    }
+    });
+    route(_history.path);
+
     if (!ignoreClick) {
       if (appRoot == null) {
-        appRoot = _window.document.documentElement;
+        appRoot = window.document.documentElement;
       }
       _logger.finest('listen on win');
       appRoot.onClick
@@ -849,42 +904,22 @@ class Router {
     }
   }
 
-  String _normalizeHash(String hash) => hash.isEmpty ? '' : hash.substring(1);
-
   /**
    * Navigates the browser to the path produced by [url] with [args] by calling
    * [History.pushState], then invokes the handler associated with [url].
    *
    * On older browsers [Location.assign] is used instead with the fragment
-   * version of the UrlPattern.
+   * version of the UrlTemplate.
    */
-  Future<bool> gotoUrl(String url) =>
-      route(url).then((success) {
+  Future<bool> gotoUrl(String url) => route(url).then((success) {
         if (success) {
-          _go(url, null, false);
+          _go(url, false);
         }
+        return success;
       });
 
-  void _go(String path, String title, bool replace) {
-    if (_useFragment) {
-      if (replace) {
-        _window.location.replace('#$path');
-      } else {
-        _window.location.assign('#$path');
-      }
-    } else {
-      if (title == null) {
-        title = (_window.document as HtmlDocument).title;
-      }
-      if (replace) {
-        _window.history.replaceState(null, title, path);
-      } else {
-        _window.history.pushState(null, title, path);
-      }
-    }
-    if (title != null) {
-      (_window.document as HtmlDocument).title = title;
-    }
+  void _go(String path, bool replace) {
+    _history.go(path, replace);
   }
 
   /**
@@ -913,6 +948,4 @@ class _Match {
   final Map queryParameters;
 
   _Match(this.route, this.urlMatch, this.queryParameters);
-
-  String toString() => route.toString();
 }

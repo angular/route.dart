@@ -34,8 +34,10 @@ class UrlTemplate implements UrlMatcher {
   int compareTo(UrlMatcher other) {
     final String tmpParamPattern = '\t';
     if (other is UrlTemplate) {
-      String thisPattern = _pattern.pattern.replaceAll(_paramPattern, tmpParamPattern);
-      String otherPattern = other._pattern.pattern.replaceAll(_paramPattern, tmpParamPattern);
+      String thisPattern =
+          _pattern.pattern.replaceAll(_paramPattern, tmpParamPattern);
+      String otherPattern =
+          other._pattern.pattern.replaceAll(_paramPattern, tmpParamPattern);
       List<String> thisPatternParts = thisPattern.split('/');
       List<String> otherPatternParts = otherPattern.split('/');
       if (thisPatternParts.length == otherPatternParts.length) {
@@ -44,7 +46,8 @@ class UrlTemplate implements UrlMatcher {
           String otherPart = otherPatternParts[i];
           if (thisPart == tmpParamPattern && otherPart != tmpParamPattern) {
             return 1;
-          } else if (thisPart != tmpParamPattern && otherPart == tmpParamPattern) {
+          } else if (thisPart != tmpParamPattern &&
+              otherPart == tmpParamPattern) {
             return -1;
           }
         }

@@ -47,12 +47,13 @@ class UrlMatch {
   UrlMatch(this.match, this.tail, this.parameters);
 
   bool operator ==(other) =>
-    other is UrlMatch &&
-    other.match == match &&
-    other.tail == tail &&
-    mapsShallowEqual(other.parameters, parameters);
+      other is UrlMatch &&
+      other.match == match &&
+      other.tail == tail &&
+      mapsShallowEqual(other.parameters, parameters);
 
-  int get hashCode => 13 * match.hashCode + 101 * tail.hashCode + 199 * parameters.hashCode;
+  int get hashCode =>
+      13 * match.hashCode + 101 * tail.hashCode + 199 * parameters.hashCode;
 
   String toString() => '{$match, $tail, $parameters}';
 }

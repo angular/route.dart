@@ -12,9 +12,6 @@ class RouteHandle implements Route {
   final StreamController<RouteLeaveEvent> _onLeaveController;
 
   @override
-  @Deprecated("use [onEnter] instead.")
-  Stream<RouteEnterEvent> get onRoute => onEnter;
-  @override
   Stream<RoutePreEnterEvent> get onPreEnter => _onPreEnterController.stream;
   @override
   Stream<RoutePreLeaveEvent> get onPreLeave => _onPreLeaveController.stream;
@@ -58,24 +55,27 @@ class RouteHandle implements Route {
     _onLeaveController.close();
     _onPreLeaveController.close();
     _childHandles
-        ..forEach((RouteHandle c) => c.discard())
-        ..clear();
+      ..forEach((RouteHandle c) => c.discard())
+      ..clear();
     _route = null;
   }
 
   /// Not supported. Overridden to throw an error.
   @override
-  void addRoute({String name, Pattern path, bool defaultRoute: false,
-      RouteEnterEventHandler enter, RoutePreEnterEventHandler preEnter,
-      RoutePreLeaveEventHandler preLeave, RouteLeaveEventHandler leave,
-      mount, dontLeaveOnParamChanges: false, String pageTitle,
+  void addRoute(
+      {String name,
+      Pattern path,
+      bool defaultRoute: false,
+      RouteEnterEventHandler enter,
+      RoutePreEnterEventHandler preEnter,
+      RoutePreLeaveEventHandler preLeave,
+      RouteLeaveEventHandler leave,
+      mount,
+      dontLeaveOnParamChanges: false,
+      String pageTitle,
       List<Pattern> watchQueryParameters}) {
     throw new UnsupportedError('addRoute is not supported in handle');
   }
-
-  @override
-  @Deprecated("use [findRoute] instead.")
-  Route getRoute(String routePath) => findRoute(routePath);
 
   @override
   Route findRoute(String routePath) {
@@ -97,7 +97,6 @@ class RouteHandle implements Route {
 
   Route _getHost(Route r) {
     _assertState();
-    if (r == null) throw new StateError('Oops?!');
     if ((r is Route) && (r is! RouteHandle)) return r;
     RouteHandle rh = r;
     return rh._getHost(rh._route);

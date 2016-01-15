@@ -1,24 +1,13 @@
-language: node_js
-node_js:
-  - 0.10
-env:
-  matrix:
-    - JOB=unit-stable
-    - JOB=unit-dev
-  global:
-    # Sauce Labs
-    - LOGS_DIR=/tmp/route-build/logs
-    - BROWSER_PROVIDER_READY_FILE=/tmp/sauce-connect-ready
-    - SAUCE_USERNAME=angular-ci
-    - SAUCE_ACCESS_KEY=9b988f434ff8-fbca-8aa4-4ae3-35442987
-
+language: dart
+dart:
+  - stable
+with_content_shell: true
 before_install:
   - export DISPLAY=:99.0
-
-before_script:
-  - ./scripts/travis/travis-setup.sh
-  - ./scripts/sauce/sauce_connect_setup.sh
-  - ./scripts/sauce/sauce_connect_block.sh
-
+  - sh -e /etc/init.d/xvfb start
 script:
-  - ./scripts/travis/travis-build.sh
+  - pub run dart_dev format --check
+  - pub run dart_dev analyze
+  - pub run dart_dev test
+  - pub run dart_dev coverage --no-html
+  - bash <(curl -s https://codecov.io/bash) -f coverage/coverage.lcov

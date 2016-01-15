@@ -1,5 +1,6 @@
 Route
 =====
+[![Build Status](https://travis-ci.org/Workiva/route.dart.svg?branch=master)](https://travis-ci.org/Workiva/route.dart) [![codecov.io](http://codecov.io/github/Workiva/route.dart/coverage.svg?branch=master)](http://codecov.io/github/Workiva/route.dart?branch=master)
 
 Route is a client routing library for Dart that helps make building
 single-page web apps.
