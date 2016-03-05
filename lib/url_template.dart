@@ -98,7 +98,7 @@ class UrlTemplate implements UrlMatcher {
     }
     var parameters = new Map();
     for (var i = 0; i < match.groupCount; i++) {
-      parameters[_fields[i]] = match[i + 1];
+      parameters[_fields[i]] = Uri.decodeComponent(match[i + 1]);
     }
     var tail = url.substring(match[0].length);
     return new UrlMatch(match[0], tail, parameters);
