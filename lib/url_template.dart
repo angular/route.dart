@@ -107,6 +107,13 @@ class UrlTemplate implements UrlMatcher {
   String reverse({Map parameters, String tail: ''}) {
     if (parameters == null) {
       parameters = const {};
+    } else {
+      parameters = new Map.from(parameters);
+      parameters.forEach((String key, String value) {
+        parameters[key] = key.endsWith('*')
+            ? value.splitMapJoin('/', onNonMatch: Uri.encodeComponent)
+            : Uri.encodeComponent(value);
+      });
     }
     return _chunks.map((c) => c is Function ? c(parameters) : c).join() + tail;
   }
