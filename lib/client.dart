@@ -123,6 +123,12 @@ abstract class Route {
    */
   Stream<RouteEnterEvent> get onEnter;
 
+  /**
+   * Returns a map of sub-routes associated with this route.
+   *
+   */
+  Map get subRoutes;
+
   void addRoute({String name, Pattern path, bool defaultRoute: false,
         RouteEnterEventHandler enter, RoutePreEnterEventHandler preEnter,
         RoutePreLeaveEventHandler preLeave, RouteLeaveEventHandler leave,
@@ -204,6 +210,9 @@ class RouteImpl extends Route {
   Stream<RouteLeaveEvent> get onLeave => _onLeaveController.stream;
   @override
   Stream<RouteEnterEvent> get onEnter => _onEnterController.stream;
+
+  @override
+  Map<String, Route> get subRoutes => this._routes;
 
   RouteImpl._new({this.name, this.path, this.parent,
                  this.dontLeaveOnParamChanges: false, this.pageTitle,
