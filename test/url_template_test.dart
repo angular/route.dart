@@ -53,6 +53,16 @@ main() {
           }));
     });
 
+    test('should decode parameters', () {
+      var tmpl = new UrlTemplate(r'/:a/:o/:u');
+      expect(tmpl.match(r'/%C3%A4/%C3%B6/%C3%BC'),
+          new UrlMatch(r'/%C3%A4/%C3%B6/%C3%BC', '', {
+            'a': 'ä',
+            'o': 'ö',
+            'u': 'ü'
+          }));
+    });
+
     test('should only match prefix', () {
       var tmpl = new UrlTemplate(r'/foo');
       expect(tmpl.match(r'/foo/foo/bar'),
@@ -78,7 +88,7 @@ main() {
       expect(tmpl.reverse(), 'null/bar/baz');
       expect(tmpl.reverse(parameters: {
         'a': '/foo',
-      }), '/foo/bar/baz');
+      }), '%2Ffoo/bar/baz');
 
       tmpl = new UrlTemplate('/foo/bar/:c');
       expect(tmpl.reverse(), '/foo/bar/null');
@@ -98,18 +108,30 @@ main() {
           new UrlMatch('/foo/123', '/456', {
               'bar': '123'
           }));
+      expect(tmpl.reverse(tail: '/456', parameters: {
+              'bar': '123'
+          }), '/foo/123/456');
+      expect(tmpl.reverse(parameters: {
+              'bar': '123/456'
+          }), '/foo/123%2F456');
 
       tmpl = new UrlTemplate('/foo/:bar*');
       expect(tmpl.match('/foo/123/456'),
           new UrlMatch('/foo/123/456', '', {
               'bar*': '123/456'
           }));
+      expect(tmpl.reverse(parameters: {
+              'bar*': '123/456'
+          }), '/foo/123/456');
 
       tmpl = new UrlTemplate('/foo/:bar*/baz');
       expect(tmpl.match('/foo/123/456/baz'),
           new UrlMatch('/foo/123/456/baz', '', {
               'bar*': '123/456'
           }));
+      expect(tmpl.reverse(parameters: {
+              'bar*': '123/456'
+          }), '/foo/123/456/baz');
     });
   });
 }

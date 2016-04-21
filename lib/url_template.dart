@@ -98,7 +98,7 @@ class UrlTemplate implements UrlMatcher {
     }
     var parameters = new Map();
     for (var i = 0; i < match.groupCount; i++) {
-      parameters[_fields[i]] = match[i + 1];
+      parameters[_fields[i]] = Uri.decodeComponent(match[i + 1]);
     }
     var tail = url.substring(match[0].length);
     return new UrlMatch(match[0], tail, parameters);
@@ -107,6 +107,13 @@ class UrlTemplate implements UrlMatcher {
   String reverse({Map parameters, String tail: ''}) {
     if (parameters == null) {
       parameters = const {};
+    } else {
+      parameters = new Map.from(parameters);
+      parameters.forEach((String key, String value) {
+        parameters[key] = key.endsWith('*')
+            ? value.splitMapJoin('/', onNonMatch: Uri.encodeComponent)
+            : Uri.encodeComponent(value);
+      });
     }
     return _chunks.map((c) => c is Function ? c(parameters) : c).join() + tail;
   }
