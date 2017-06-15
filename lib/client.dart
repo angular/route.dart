@@ -551,7 +551,7 @@ class Router {
       }
     }
     // Reverse the list to ensure child is left before the parent.
-    mustLeave = mustLeave.toList().reversed;
+    mustLeave = mustLeave.toList().reversed.toList();
 
     var preLeaving = <Future<bool>>[];
     mustLeave.forEach((toLeave) {
